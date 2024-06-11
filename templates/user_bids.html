@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Your Bids</h1>
+<table>
+    <thead>
+        <tr>
+            <th>Pickup</th>
+            <th>Destination</th>
+            <th>Number of Vehicles</th>
+            <th>Time Limit</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for bid in bids %}
+        <tr>
+            <td>{{ bid.pickup }}</td>
+            <td>{{ bid.destination }}</td>
+            <td>{{ bid.number_of_vehicles }}</td>
+            <td>{{ bid.time_limit }}</td>
+            <td><a href="{% url 'configure_vehicle' destination_id=bid.id vehicle_index=1 %}">Edit</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

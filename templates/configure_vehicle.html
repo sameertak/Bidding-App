@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Configure Vehicle {{ vehicle_index }} of {{ number_of_vehicles }}</h1>
+<form method="post" action="{% url 'configure_vehicle' destination_id=destination_id vehicle_index=vehicle_index %}">
+    {% csrf_token %}
+    
+    <label for="material_description">Material Description:</label>
+    <textarea id="material_description" name="material_description" required>{{ material_description }}</textarea>
+    
+    <label for="material_weight">Material Weight (kg):</label>
+    <input type="number" id="material_weight" name="material_weight" value="{{ material_weight }}" required>
+    
+    <label for="material_height">Material Height (cm):</label>
+    <input type="number" id="material_height" name="material_height" value="{{ material_height }}" required>
+    
+    <label for="material_width">Material Width (cm):</label>
+    <input type="number" id="material_width" name="material_width" value="{{ material_width }}" required>
+    
+    <label for="material_length">Material Length (cm):</label>
+    <input type="number" id="material_length" name="material_length" value="{{ material_length }}" required>
+    
+    <label for="additional_details">Additional Details:</label>
+    <textarea id="additional_details" name="additional_details">{{ additional_details }}</textarea>
+    
+    <label for="delivery_estimation">Delivery Estimation (days):</label>
+    <input type="number" id="delivery_estimation" name="delivery_estimation" value="{{ delivery_estimation }}" required>
+    
+    <label for="loading_date">Loading Date:</label>
+    <input type="datetime-local" id="loading_date" name="loading_date" value="{{ loading_date }}" required>
+    
+    <label for="loading_type">Loading Type:</label>
+    <select id="loading_type" name="loading_type" required>
+        {% for value, display in loading_types %}
+        <option value="{{ value }}" {% if value == loading_type %}selected{% endif %}>{{ display }}</option>
+        {% endfor %}
+    </select>
+    
+    <button type="submit">Submit</button>
+</form>
+
+{% if vehicle_index > 1 %}
+<a href="{% url 'configure_vehicle' destination_id=destination_id vehicle_index=vehicle_index|add:'-1' %}">Previous</a>
+{% endif %}
+
+{% if vehicle_index < number_of_vehicles %}
+<a href="{% url 'configure_vehicle' destination_id=destination_id vehicle_index=vehicle_index|add:'1' %}">Next</a>
+{% endif %}
+
+{% endblock %}
