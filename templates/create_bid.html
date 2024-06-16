@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block content %}
+{% if groups %}
+<div class="center-container" style="align-items:start;">
+  <div class="cards">
+    <div class="card red" onclick="showModal()">
+      <p class="tip">Create Bid</p>
+      <p class="second-text">Get Started by creating bids</p>
+    </div>
+    <!-- <div class="card green" onclick="showModal()">
+      <p class="tip">Create Bid</p>
+      <p class="second-text">Get Started by creating bids</p>
+    </div> -->
+  </div>
+</div>
+<div class="modal-container" id="modalContainer">
+  <div class="modal">
+    <div class="modal__header">
+      <span class="modal__title">New Bid</span>
+      <button class="button button--icon" onclick="hideModal()">
+        <svg width="24" viewBox="0 0 24 24" height="24" xmlns="http://www.w3.org/2000/svg">
+          <path fill="none" d="M0 0h24v24H0V0z"></path>
+          <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"></path>
+        </svg>
+      </button>
+    </div>
+    <form method="post" action="{% url 'create_bid' %}">
+      {% csrf_token %}
+      <div class="modal__body">
+        <div class="input">
+          <label class="input__label" for="pickup">Pickup Location</label>
+          <input type="text" id="pickup" name="pickup" class="input__field" value="Supernova Engineers Limited">
+          <p class="input__description">Enter the location for pickup</p>
+        </div>
+        <div class="input">
+          <label class="input__label" for="destination">Destination</label>
+          <input type="text" id="destination" name="destination" class="input__field">
+          <p class="input__description">Enter the destination location</p>
+        </div>
+        <div class="input">
+          <label class="input__label" for="destination_link">Destination Link</label>
+          <input type="text" id="destination_link" name="destination_link" class="input__field">
+          <p class="input__description">Google Maps Link of the destination</p>
+        </div>
+        <div class="input">
+          <label class="input__label" for="number_of_vehicles">Number of Vehicles</label>
+          <input type="number" id="number_of_vehicles" name="number_of_vehicles" class="input__field" value="1">
+          <p class="input__description">Number of vehicles required for the transportation</p>
+        </div>
+        <div class="input">
+          <label class="input__label" for="time_limit">Time Limit</label>
+          <input type="datetime-local" id="time_limit" name="time_limit" class="input__field" value="{{ time_limit }}">
+          <p class="input__description">Provide Time Limit for the bidding. Default: 2 hours</p>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button class="buttonnew button--primary">Create Bid</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function showModal() {
+  document.getElementById('modalContainer').classList.add('show');
+  document.querySelector('.center-container').classList.add('blurred');
+}
+
+function hideModal() {
+  document.getElementById('modalContainer').classList.remove('show');
+  document.querySelector('.center-container').classList.remove('blurred');
+}
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Place a Bid</h1>
+<h2>Post Details</h2>
+<p>Destination: {{ post.destination }}</p>
+<p>Number of Vehicles: {{ post.number_of_vehicles }}</p>
+<p>Vehicle Requirements: {{ post.vehicle_requirements }}</p>
+<p>Size Requirements: {{ post.size_requirements }}</p>
+<p>Weight Requirements: {{ post.weight_requirements }}</p>
+
+<h2>Bids</h2>
+<ul>
+    {% for bid in bids %}
+    <li>{{ bid.amount }}</li>
+    {% endfor %}
+</ul>
+
+<form method="post" action="{% url 'bid' post.id %}">
+    {% csrf_token %}
+    <label for="amount">Bid Amount:</label>
+    <input type="number" id="amount" name="amount" required><br>
+    <button type="submit">Place Bid</button>
+</form>
+{% endblock %}

@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div style="height: calc(100vh - 82px);">
+    <div>
+        <div style="justify-content: center;">
+            <div>
+                <form method="post" action="{% url 'configure_vehicle' destination_id=destination_id vehicle_index=vehicle_index %}">
+                    {% csrf_token %}
+                    
+                    <h2 style="text-align: center; margin-bottom: 20px;">Configure Vehicle {{ vehicle_index }} of {{ number_of_vehicles }}</h2>
+                    
+                    <div class="d-flex flex-column align-items-center">
+                        <div style="margin-bottom: 15px;" class="w-75">
+                            <label for="destination">Destination:</label>
+                            <input type="text" id="destination" name="destination" class="form-control" value="{{ destination }}" required>
+                        </div>
+
+                        <div style="margin-bottom: 15px;" class="w-75">
+                            <label for="destination_link">Destination Link:</label>
+                            <input type="url" id="destination_link" name="destination_link" class="form-control" value="{{ destination_link }}">
+                        </div>
+                        
+                        <div style="margin-bottom: 15px;" class="w-75">
+                            <label for="number_of_vehicles">Number of Vehicles:</label>
+                            <input type="number" id="number_of_vehicles" name="number_of_vehicles" class="form-control" value="{{ number_of_vehicles }}" required>
+                        </div>
+                    
+                        <div style="margin-bottom: 15px;" class="w-75">
+                                <label for="pickup">Pickup Location:</label>
+                            <input type="text" id="pickup" name="pickup" class="form-control" value="{{ pickup }}" required>
+                        </div>
+
+                        <div style="margin-bottom: 15px;" class="w-75">
+                            <label for="material_description">Material Description:</label>
+                            <textarea id="material_description" name="material_description" class="form-control" required>{{ material_description }}</textarea>
+                        </div>
+                        
+                        <div style="margin-bottom: 15px;" class="w-75">
+                            <label for="material_weight">Material Weight (kg):</label>
+                            <input type="number" id="material_weight" name="material_weight" class="form-control" value="{{ material_weight }}" required>
+                        </div>
+                        
+                        <div style="margin-bottom: 15px;" class="w-75">
+                            <label for="material_height">Material Height (m):</label>
+                            <input type="number" id="material_height" name="material_height" class="form-control" value="{{ material_height }}" required>
+                        </div>
+                        
+                        <div style="margin-bottom: 15px;" class="w-75">
+                            <label for="material_width">Material Width (m):</label>
+                            <input type="number" id="material_width" name="material_width" class="form-control" value="{{ material_width }}" required>
+                        </div>
+                        
+                        <div style="margin-bottom: 15px;" class="w-75">
+                            <label for="material_length">Material Length (m):</label>
+                            <input type="number" id="material_length" name="material_length" class="form-control" value="{{ material_length }}" required>
+                        </div>
+                        
+                        <div style="margin-bottom: 15px;" class="w-75">
+                            <label for="additional_details">Additional Details:</label>
+                            <textarea id="additional_details" name="additional_details" class="form-control">{{ additional_details }}</textarea>
+                        </div>
+                        
+                        <div style="margin-bottom: 15px;" class="w-75">
+                            <label for="delivery_estimation">Delivery Estimation (days):</label>
+                            <input type="number" id="delivery_estimation" name="delivery_estimation" class="form-control" value="{{ delivery_estimation }}" required>
+                        </div>
+                        
+                        <div style="margin-bottom: 15px;" class="w-75">
+                            <label for="loading_date">Loading Date:</label>
+                            <input type="date" id="loading_date" name="loading_date" class="form-control" value="{{ loading_date }}" required>
+                        </div>
+                        
+                        <div style="margin-bottom: 15px;" class="w-75">
+                            <label for="loading_type">Loading Type:</label>
+                            <select id="loading_type" name="loading_type" class="form-select" required>
+                                {% for value, display in loading_types %}
+                                <option value="{{ value }}" {% if value == loading_type %}selected{% endif %}>{{ display }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div style="margin-top: 20px; display: flex; justify-content: space-between;">
+                            {% if vehicle_index > 1 %}
+                            <a href="{% url 'configure_vehicle' destination_id=destination_id vehicle_index=vehicle_index|add:'-1' %}" class="btn btn-secondary">Previous</a>
+                            {% endif %}
+                            {% if vehicle_index == number_of_vehicles %}
+                                <button type="submit" name="update_vehicle" class="btn btn-primary">Submit</button>
+                            {% else %}
+                                <button type="submit" name="update_vehicle" class="btn btn-secondary ms-auto">Next</button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

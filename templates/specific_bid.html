@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Vehicle Details for {{ destination.destination }}</h1>
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Material Dimensions</th>
+                <th>Material Weight</th>
+                <th>Delivery Estimation</th>
+                <th>Loading Date</th>
+                <th>Loading Type</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for vehicle in vehicles %}
+            <tr>
+                <td>{{ vehicle.material_length }} x {{ vehicle.material_width }} x {{ vehicle.material_height }}</td>
+                <td>{{ vehicle.material_weight }}</td>
+                <td>{{ vehicle.delivery_estimation }}</td>
+                <td>{{ vehicle.loading_date }}</td>
+                <td>{{ vehicle.loading_type }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

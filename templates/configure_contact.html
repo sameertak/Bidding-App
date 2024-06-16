@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    .dropdown-menu {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .input-group {
+        width: 100%;
+    }
+</style>
+<div class="container mt-5">
+    <div class="d-flex align-items-center flex-column">
+        <h3>Select Contacts</h3>
+        <form method="get" action="{% url 'configure_contact' destination_id=destination_id %}" class="mb-3 w-100">
+            <div class="input-group">
+                <input type="text" name="search" id="searchInput" class="form-control" placeholder="Enter name"
+                    autocomplete="off" value="{{ request.GET.search }}" />
+                <div class="input-group-append">
+                    <button class="btn btn-outline-secondary" type="submit">Search</button>
+                </div>
+            </div>
+        </form>
+        <p>Can't find the contact? <a href="{% url 'create_contact' %}">Click here to create a new contact</a></p>
+    </div>
+
+    {% if transporters %}
+    <div class="d-flex w-100 justify-content-center">
+        <div class="flex-column w-75">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th scope="col">Name</th>
+                            <th scope="col">Contact</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transporter in transporters %}
+                        <tr>
+                            <td>{{ transporter.transporter_name }}</td>
+                            <td>{{ transporter.transporter_contact }}</td>
+                            <td>
+                                <form method="post"
+                                    action="{% url 'configure_contact' destination_id=destination_id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="add_transporter_id" value="{{ transporter.id }}">
+                                    <input type="hidden" name="page" value="{{ transporters.number }}">
+                                    <input type="hidden" name="search" value="{{ request.GET.search }}">
+                                    <button type="submit" class="btn btn-success btn-sm">Add</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <nav aria-label="Page navigation">
+                <ul class="pagination">
+                    {% if transporters.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="?page={{ transporters.previous_page_number }}&search={{ request.GET.search }}"
+                            aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% for num in transporters.paginator.page_range %}
+                    <li class="page-item {% if transporters.number == num %}active{% endif %}">
+                        <a class="page-link" href="?page={{ num }}&search={{ request.GET.search }}">{{ num }}</a>
+                    </li>
+                    {% endfor %}
+                    {% if transporters.has_next %}
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="?page={{ transporters.next_page_number }}&search={{ request.GET.search }}"
+                            aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+
+    <h3 class="mt-5">Selected Transporters</h3>
+    <div class="d-flex w-100 h-100 justify-content-center">
+        <div class="flex-column w-75">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Contact</th>
+                        <th scope="col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="selectedUsersTable">
+                    {% for selected_user in selected_users %}
+                    <tr>
+                        <td>{{ selected_user.transporter_name }}</td>
+                        <td>{{ selected_user.transporter_contact }}</td>
+                        <td>
+                            <form method="post" action="{% url 'configure_contact' destination_id=destination_id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="remove_transporter_id" value="{{ selected_user.id }}">
+                                <input type="hidden" name="page" value="{{ transporters.number }}">
+                                <input type="hidden" name="search" value="{{ request.GET.search }}">
+                                <button type="submit" class="btn btn-danger btn-sm">&times;</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <form method="post" action="{% url 'save_contacts' destination_id=destination_id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary mt-3" name="save_contacts">Save Contacts</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

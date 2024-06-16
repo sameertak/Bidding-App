@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="center-container">
+    <form class="custom-form" method="post" action="{% url 'signup' %}">
+        {% csrf_token %}
+        <p class="custom-title">Register</p>
+        <p class="custom-message">Signup now and get full access to our app.</p>
+        <div class="custom-flex">
+            <label>
+                {{ form.first_name }}
+                <span>Firstname</span>
+            </label>
+            <label>
+                {{ form.last_name }}
+                <span>Lastname</span>
+            </label>
+        </div>
+        <label>
+            {{ form.username }}
+            <span>Username</span>
+        </label>
+        <label>
+            {{ form.email }}
+            <span>Email</span>
+        </label>
+        <label>
+            <input class="custom-input" type="password" placeholder="" required="">
+            <span>Password</span>
+        </label>
+        <label>
+            <input class="custom-input" type="password" placeholder="" required="">
+            <span>Confirm password</span>
+        </label>
+        <button class="custom-submit">Submit</button>
+        <p class="custom-signin">Already have an account? <a href="{% url 'login' %}">Signin</a></p>
+    </form>
+</div>
+{% endblock %}
