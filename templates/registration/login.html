@@ -1,23 +1,20 @@
 {% extends 'base.html' %}
-
 {% block content %}
-<div class="wrapper">
-    <div class="card-switch">
-        <label class="switch">
-            <input type="checkbox" class="toggle">
-            <span class="slider"></span>
-            <span class="card-side"></span>
-            <div class="flip-card__inner">
-                <div class="flip-card__front">
-                    <div class="title">Log in</div>
-                    <form class="flip-card__form" method="post" action="{% url 'login' %}">
-                        {% csrf_token %}
-                        {{ form.as_p }}
-                        <button type="submit" class="flip-card__btn">Let's go!</button>
-                    </form>
-                </div>
-            </div>
+<div class="center-container">
+    <form class="custom-form" style="width:100%;" method="post" action="{% url 'login' %}">
+        {% csrf_token %}
+        <p class="custom-title">Login</p>
+        <p class="custom-message">Login now and start bidding!</p>
+        <label>
+            {{ form.username }}
+            <span>Username</span>
         </label>
-    </div>
+        <label>
+            {{form.password}}
+            <span>Password</span>
+        </label>
+        <button class="custom-submit">Submit</button>
+        <p class="custom-signin">Don't have an account? <a href="{% url 'signup' %}">Sign Up</a></p>
+    </form>
 </div>
 {% endblock %}

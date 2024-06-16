@@ -26,7 +26,9 @@ SECRET_KEY = config('DJANGO_SECRET_KEY', default='your-default-secret-key')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DJANGO_DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
+
+SITE_URL = 'localhost:8000'
 
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'create_bid'
@@ -114,8 +116,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Kolkata'
 
+USE_L10N = True
 USE_I18N = True
 
 USE_TZ = True
