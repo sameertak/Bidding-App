@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block back_button %}
+<a href="javascript:history.back()" class="btn btn-secondary mb-3">Go Back</a>
+{% endblock %}
+
+{% block content %}
+<h1>Bids for Vehicle {{ vehicle.id }}</h1>
+
+<input type="text" id="transporterSearch" onkeyup="searchTransporter()" placeholder="Search for transporter..">
+
+<div class="table-responsive">
+    <table class="table table-striped" id="bidsTable">
+        <thead>
+            <tr>
+                <th>Transporter Name</th>
+                <th>Bid Amount</th>
+                <th>Bid Time</th>
+                <th>Status</th>
+                <th>Actions</th>
+                <th>Accepted By</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for bid in bids %}
+            <tr class="{% if bid.status == 'accepted' %}table-success{% elif bid.status == 'rejected' %}table-danger{% endif %}">
+                <td>{{ bid.transporter.transporter_name }}</td>
+                <td>{{ bid.amount }}</td>
+                <td>{{ bid.created_at }}</td>
+                <td>{{ bid.status }}</td>
+                <td>
+                    <button onclick="acceptBid({{ bid.id }})" class="btn btn-success btn-sm">Accept</button>
+                    <button onclick="rejectBid({{ bid.id }})" class="btn btn-danger btn-sm">Reject</button>
+                </td>
+                <td>{% if bid.status == 'accepted' %}{{ bid.accepted_by.username }}{% endif %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    function searchTransporter() {
+        var input, filter, table, tr, td, i, txtValue;
+        input = document.getElementById("transporterSearch");
+        filter = input.value.toUpperCase();
+        table = document.getElementById("bidsTable");
+        tr = table.getElementsByTagName("tr");
+
+        for (i = 1; i < tr.length; i++) {
+            td = tr[i].getElementsByTagName("td")[0];
+            if (td) {
+                txtValue = td.textContent || td.innerText;
+                if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }       
+        }
+    }
+
+    function acceptBid(bidId) {
+        fetch(`/accept_bid/${bidId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            }
+        });
+    }
+
+    function rejectBid(bidId) {
+        fetch(`/reject_bid/${bidId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            }
+        });
+    }
+</script>
+{% endblock %}
