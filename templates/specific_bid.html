@@ -1,6 +1,20 @@
 {% extends 'base.html' %}
+{% load custom_tags %}
+
+{% block back_button %}
+<a href="javascript:history.back()" class="btn btn-secondary mb-3">Go Back</a>
+{% endblock %}
 
 {% block content %}
+<style>
+    .clickable-row {
+        cursor: pointer;
+    }
+    .accepted-bid-row {
+        background-color: #d4edda;
+    }
+</style>
+
 <h1>Vehicle Details for {{ destination.destination }}</h1>
 <div class="table-responsive">
     <table class="table table-striped">
@@ -11,16 +25,18 @@
                 <th>Delivery Estimation</th>
                 <th>Loading Date</th>
                 <th>Loading Type</th>
+                <th>Number of Bids</th>
             </tr>
         </thead>
         <tbody>
             {% for vehicle in vehicles %}
-            <tr>
+            <tr class="clickable-row {% if vehicle.has_accepted_bid %}accepted-bid-row{% endif %}" onclick="window.location.href='{% url 'vehicle_bids' vehicle.id %}'">
                 <td>{{ vehicle.material_length }} x {{ vehicle.material_width }} x {{ vehicle.material_height }}</td>
                 <td>{{ vehicle.material_weight }}</td>
                 <td>{{ vehicle.delivery_estimation }}</td>
                 <td>{{ vehicle.loading_date }}</td>
                 <td>{{ vehicle.loading_type }}</td>
+                <td>{{ vehicle_bids_count|get_value:vehicle.id }}</td> <!-- Display number of bids -->
             </tr>
             {% endfor %}
         </tbody>

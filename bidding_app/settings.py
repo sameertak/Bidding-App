@@ -26,9 +26,10 @@ SECRET_KEY = config('DJANGO_SECRET_KEY', default='your-default-secret-key')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DJANGO_DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = ['*']
-
-SITE_URL = 'localhost:8000'
+# ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['SupernovaGenset.pythonanywhere.com']
+# SITE_URL = 'localhost:8000'
+SITE_URL = 'SupernovaGenset.pythonanywhere.com'
 
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'create_bid'
@@ -38,13 +39,21 @@ LOGOUT_REDIRECT_URL = 'login'
 
 INSTALLED_APPS = [
     'app',
+    'webpush',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'push_notifications',
 ]
+
+WEBPUSH_SETTINGS = {
+    "VAPID_PUBLIC_KEY": "BCoxnfSX175fa1P-11wYVGCLJ5fBfMJqxiUuvkHf5fcDCCe7zP0HY6pZCAdy8JUBd9W3BPtMLvgKSJIyyXMj_dM",
+    "VAPID_PRIVATE_KEY": "LgyGJ_REGXPLJb7Y8vQyff48BvpnbxIroiac8BKW5cE",
+    "VAPID_ADMIN_EMAIL": "taksamir08@gmail.com"
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -83,10 +92,12 @@ WSGI_APPLICATION = 'bidding_app.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': config('DJANGO_DB_NAME'),
+        # 'NAME': config('DJANGO_DB_NAME'),
+        'NAME': f"{config('DJANGO_DB_USER')}${config('DJANGO_DB_NAME')}",
         'USER': config('DJANGO_DB_USER'),
         'PASSWORD': config('DJANGO_DB_PASSWORD'),
-        'HOST': config('DJANGO_DB_HOST', default='localhost'),
+        # 'HOST': config('DJANGO_DB_HOST', default='localhost'),
+        'HOST': config('DJANGO_DB_HOST', default='SupernovaGenset.mysql.pythonanywhere-services.com'),
         'PORT': config('DJANGO_DB_PORT', default=3306, cast=int),
     }
 }
@@ -129,6 +140,7 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field

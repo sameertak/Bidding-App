@@ -4,7 +4,7 @@
 {% if groups %}
 <div class="center-container" style="align-items:start;">
   <div class="cards">
-    <div class="card red" onclick="showModal()">
+    <div class="card red" id="subscribeButton" onclick="showModal()">
       <p class="tip">Create Bid</p>
       <p class="second-text">Get Started by creating bids</p>
     </div>
@@ -21,7 +21,9 @@
       <button class="button button--icon" onclick="hideModal()">
         <svg width="24" viewBox="0 0 24 24" height="24" xmlns="http://www.w3.org/2000/svg">
           <path fill="none" d="M0 0h24v24H0V0z"></path>
-          <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"></path>
+          <path
+            d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z">
+          </path>
         </svg>
       </button>
     </div>
@@ -62,15 +64,93 @@
 </div>
 
 <script>
-function showModal() {
-  document.getElementById('modalContainer').classList.add('show');
-  document.querySelector('.center-container').classList.add('blurred');
-}
+  function showModal() {
+    document.getElementById('modalContainer').classList.add('show');
+    document.querySelector('.center-container').classList.add('blurred');
+  }
 
-function hideModal() {
-  document.getElementById('modalContainer').classList.remove('show');
-  document.querySelector('.center-container').classList.remove('blurred');
-}
+  function hideModal() {
+    document.getElementById('modalContainer').classList.remove('show');
+    document.querySelector('.center-container').classList.remove('blurred');
+  }
+  document.addEventListener('DOMContentLoaded', function () {
+    const subscribeButton = document.getElementById('subscribeButton');
+
+    subscribeButton.addEventListener('click', function () {
+      if ('serviceWorker' in navigator && 'PushManager' in window) {
+        navigator.serviceWorker.register("/static/js/service-worker.js")
+          .then(function (swReg) {
+            console.log('Service Worker Registered', swReg);
+            swRegistration = swReg;
+            initializeUI();
+          })
+          .catch(function (error) {
+            console.error('Service Worker Error', error);
+          });
+      }
+
+    });
+
+    function saveSubscription(subscription) {
+      fetch('/webpush/save_information/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify(subscription)
+      }).then(function (response) {
+        return response.json();
+      }).then(function (data) {
+        console.log('Subscription data sent to server:', data);
+        // Optionally handle success response from server
+      }).catch(function (err) {
+        console.error('Failed to send subscription data to server:', err);
+      });
+    }
+
+
+    function initializeUI() {
+      Notification.requestPermission().then(function (permission) {
+        if (permission === 'granted') {
+          console.log('Notification permission granted.');
+          subscribeUser();
+        } else {
+          console.log('Notification permission denied.');
+        }
+      });
+    }
+
+    function subscribeUser() {
+      const vapidPublicKey = '{{ vapid_public_key }}';
+      const applicationServerKey = urlB64ToUint8Array(vapidPublicKey);
+      console.log('Application Server Key:', applicationServerKey);
+
+      swRegistration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: applicationServerKey
+      }).then(function (subscription) {
+        console.log('User is subscribed:', subscription);
+        saveSubscription(subscription);
+      }).catch(function (err) {
+        console.error('Failed to subscribe the user:', err);
+      });
+    }
+
+    function urlB64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding)
+        .replace(/\-/g, '+')
+        .replace(/_/g, '/');
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
+    }
+  });
+
 </script>
 {% endif %}
 {% endblock %}

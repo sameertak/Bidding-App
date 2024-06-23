@@ -58,3 +58,28 @@ class TransporterToken(models.Model):
 
     def __str__(self):
         return f"{self.transporter.transporter_name} - {self.token}"
+
+
+class Bid(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('rejected', 'Rejected')
+    )
+    vehicle = models.ForeignKey('VehicleDetails', on_delete=models.CASCADE)
+    transporter = models.ForeignKey('TransporterDetails', on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    accepted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='accepted_bids')
+
+    def __str__(self):
+        return f"Bid by {self.transporter.transporter_name} for {self.vehicle.material_description} - ₹{self.amount}"
+    
+
+class WebPushSubscription(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    endpoint = models.CharField(max_length=500)
+    p256dh = models.CharField(max_length=100)
+    auth = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)

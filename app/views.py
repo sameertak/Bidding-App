@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from .models import DestinationDetail, VehicleDetails, SignUpForm, TransporterDetails, TransporterToken, LOADING_TYPES
+from .models import DestinationDetail, VehicleDetails, SignUpForm, TransporterDetails, TransporterToken, Bid, LOADING_TYPES, WebPushSubscription
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login, authenticate
@@ -16,6 +16,53 @@ import uuid
 from django.utils.crypto import get_random_string
 from django.urls import reverse
 from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
+from push_notifications.models import WebPushDevice
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
+from pywebpush import webpush, WebPushException
+from django.views.decorators.http import require_POST
+
+
+def send_push_notification(subscription_info, data):
+    try:
+        webpush(
+            subscription_info=subscription_info,
+            data=data,  # Ensure data is already serialized as JSON
+            vapid_private_key=settings.WEBPUSH_SETTINGS['VAPID_PRIVATE_KEY'],
+            vapid_claims={
+                "sub": "mailto:{}".format(settings.WEBPUSH_SETTINGS['VAPID_ADMIN_EMAIL'])
+            }
+        )
+    except WebPushException as ex:
+        print(f"I'm sorry, Dave, but I can't do that: {repr(ex)}")
+        if ex.response and ex.response.json():
+            extra = ex.response.json()
+            print(f"Remote service replied with a {extra['code']}:{extra['errno']}, {extra['message']}")
+
+
+
+def save_web_push_info(request):
+    if request.method == 'POST':
+        subscription_info = json.loads(request.body.decode('utf-8'))
+        endpoint = subscription_info.get('endpoint')
+        keys = subscription_info.get('keys', {})
+        p256dh = keys.get('p256dh')
+        auth = keys.get('auth')
+        
+        if not all([endpoint, p256dh, auth]):
+            return JsonResponse({'status': 'failed', 'message': 'Incomplete subscription info'})
+
+        print('CREATING USER')
+    
+        WebPushSubscription.objects.update_or_create(
+            user=request.user,
+            endpoint=endpoint,
+            defaults={'p256dh': p256dh, 'auth': auth}
+        )
+        return JsonResponse({'status': 'success'})
+    return JsonResponse({'status': 'failed', 'message': 'Invalid request method'})
 
 
 def generate_unique_reference(bid_id):
@@ -30,7 +77,6 @@ def create_bid(request):
         number_of_vehicles = request.POST['number_of_vehicles']
         time_limit = request.POST['time_limit']
         destination_link = request.POST['destination_link']
-
         # Create a new DestinationDetail object
         new_bid = DestinationDetail(
             user=request.user,
@@ -53,7 +99,7 @@ def create_bid(request):
         tz = pytz.timezone('Asia/Kolkata')
         default_time_limit =  datetime.now(tz) + timedelta(hours=2)
         default_time_limit_str = default_time_limit.strftime('%Y-%m-%dT%H:%M')
-    return render(request, 'create_bid.html', context={'groups': request.user.groups.filter(name='Bid Creators').exists, 'time_limit': default_time_limit_str})
+    return render(request, 'create_bid.html', context={'groups': request.user.groups.filter(name='Bid Creators').exists, 'time_limit': default_time_limit_str, 'vapid_public_key':settings.WEBPUSH_SETTINGS['VAPID_PUBLIC_KEY']})
 
 @login_required
 def create_contact(request):
@@ -92,26 +138,89 @@ def place_bid_with_token(request, token):
     transporter_token = get_object_or_404(TransporterToken, token=token)
     transporter = transporter_token.transporter
     destination = transporter_token.destination
+    vehicles = VehicleDetails.objects.filter(destination_id=destination)
 
     # Handle the bidding logic here...
-
     context = {
         'transporter': transporter,
         'destination': destination,
+        'vehicles': vehicles,
     }
     return render(request, 'place_bid.html', context)
-
 
 def place_bid(request, destination_id, transporter_id):
     destination = get_object_or_404(DestinationDetail, id=destination_id)
     transporter = get_object_or_404(TransporterDetails, id=transporter_id)
     
-    # Handle the bidding logic here
-    # You can access `transporter` to identify who is placing the bid
+    # Fetch all vehicles associated with the destination
+    vehicles = VehicleDetails.objects.filter(destination_id=destination)
+
+    return render(request, 'place_bid.html', {
+        'destination': destination,
+        'transporter': transporter,
+        'vehicles': vehicles,
+        'vapid_public_key': settings.WEBPUSH_SETTINGS['VAPID_PUBLIC_KEY']
+    })
+
+@csrf_exempt
+def submit_bid(request, destination_id, transporter_id):
+    destination = get_object_or_404(DestinationDetail, id=destination_id)
+    transporter = get_object_or_404(TransporterDetails, id=transporter_id)
     
-    return render(request, 'place_bid.html', {'destination': destination, 'transporter': transporter})
+    if request.method == 'POST':
+        vehicle_ids = {}
+        bid_amounts = {}
+        
+        for key, value in request.POST.items():
+            if key.startswith('vehicle_id_'):
+                vehicle_id = key.split('_')[2]  # Extract vehicle id from the key
+                vehicle_ids[vehicle_id] = value
+            elif key.startswith('bid_amount_'):
+                vehicle_id = key.split('_')[2]  # Extract vehicle id from the key
+                bid_amounts[vehicle_id] = value
 
+        for vehicle_id in vehicle_ids:
+            if vehicle_id in bid_amounts and bid_amounts[vehicle_id]:  # Check if bid_amount is present
+                vehicle = get_object_or_404(VehicleDetails, id=vehicle_ids[vehicle_id])
+                Bid.objects.create(
+                    vehicle=vehicle,
+                    transporter=transporter,
+                    amount=bid_amounts[vehicle_id]
+                )
+                # print(vehicle, transporter, bid_amounts[vehicle_id])
+                # Send web push notification
+                devices = WebPushSubscription.objects.filter(user=destination.user)
+                for device in devices:
+                    subscription = {
+                        "endpoint": device.endpoint,
+                        "keys": {
+                            "p256dh": device.p256dh,
+                            "auth": device.auth
+                        }
+                    }
+                    message = {
+                        "head": "New Bid",
+                        "body": f"{transporter.transporter_name} has posted a bid of ₹{bid_amounts[vehicle_id]} for {vehicle.material_description}",
+                        "icon": "/static/icons/icon-512x512.png",
+                        "url": "http://localhost:8000/user_bids/"
+                    }
+                    try:
+                        send_push_notification(subscription, json.dumps(message))
+                    except WebPushException as ex:
+                        print(f"Error sending push notification: {repr(ex)}")
+        return redirect('bid_success')  # redirect to a success page
 
+    # Fetch all vehicles associated with the destination
+    vehicles = VehicleDetails.objects.filter(destination_id=destination)
+
+    return render(request, 'place_bid.html', {
+        'destination': destination,
+        'transporter': transporter,
+        'vehicles': vehicles  # Pass the vehicles to the template
+    })
+
+def bid_success(request):
+    return render(request, 'bid_success.html')
 
 @login_required
 def edit_contact(request, contact_id):
@@ -371,15 +480,52 @@ def login_view(request):
     return render(request, 'registration/login.html', {'form': form, 'signup_form': signup_form})
 
 
+
 @login_required
 def specific_bid(request, destination_id):
-    destination_obj = DestinationDetail.objects.filter(user=request.user, id=destination_id).first()
-    if destination_obj:
-        vehicles_obj = VehicleDetails.objects.filter(destination_id=destination_obj)
-    else:
-        vehicles_obj = []
+    destination_obj = get_object_or_404(DestinationDetail, user=request.user, id=destination_id)
+    vehicles_obj = VehicleDetails.objects.filter(destination_id=destination_obj).annotate(
+        has_accepted_bid=Count('bid', filter=models.Q(bid__status='accepted'))
+    )
+    vehicle_bids_count = {vehicle.id: Bid.objects.filter(vehicle=vehicle).count() for vehicle in vehicles_obj}
 
     return render(request, 'specific_bid.html', {
         'destination': destination_obj,
-        'vehicles': vehicles_obj
+        'vehicles': vehicles_obj,
+        'vehicle_bids_count': vehicle_bids_count
     })
+
+
+@login_required
+def vehicle_bids(request, vehicle_id):
+    vehicle = get_object_or_404(VehicleDetails, id=vehicle_id)
+    bids = Bid.objects.filter(vehicle=vehicle).order_by('amount')
+    return render(request, 'vehicle_bids.html', {
+        'vehicle': vehicle,
+        'bids': bids
+    })
+
+@require_POST
+@login_required
+def accept_bid(request, bid_id):
+    bid = get_object_or_404(Bid, id=bid_id)
+    if bid.vehicle.destination_id.user == request.user:
+        # Accept the selected bid
+        bid.status = 'accepted'
+        bid.accepted_by = request.user
+        print(bid.accepted_by)
+        bid.save()
+        
+        # Reject all other bids for the same vehicle
+        Bid.objects.filter(vehicle=bid.vehicle).exclude(id=bid.id).update(status='rejected')
+    return JsonResponse({'status': 'success'})
+
+
+@require_POST
+@login_required
+def reject_bid(request, bid_id):
+    bid = get_object_or_404(Bid, id=bid_id)
+    if bid.vehicle.destination_id.user == request.user:
+        bid.status = 'rejected'
+        bid.save()
+    return JsonResponse({'status': 'success'})
