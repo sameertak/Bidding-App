@@ -140,11 +140,14 @@ def place_bid_with_token(request, token):
     destination = transporter_token.destination
     vehicles = VehicleDetails.objects.filter(destination_id=destination)
 
-    # Handle the bidding logic here...
+    bid_end_time = destination.time_limit
+    print(f"Bid End Time: {bid_end_time}")  # Ensure this prints correctly in the console
+
     context = {
         'transporter': transporter,
         'destination': destination,
         'vehicles': vehicles,
+        'bid_end_time': bid_end_time,
     }
     return render(request, 'place_bid.html', context)
 
@@ -152,14 +155,16 @@ def place_bid(request, destination_id, transporter_id):
     destination = get_object_or_404(DestinationDetail, id=destination_id)
     transporter = get_object_or_404(TransporterDetails, id=transporter_id)
     
-    # Fetch all vehicles associated with the destination
     vehicles = VehicleDetails.objects.filter(destination_id=destination)
+    
+    bid_end_time = destination.time_limit
+    print(f"Bid End Time: {bid_end_time}")  # Ensure this prints correctly in the console
 
     return render(request, 'place_bid.html', {
         'destination': destination,
         'transporter': transporter,
         'vehicles': vehicles,
-        'vapid_public_key': settings.WEBPUSH_SETTINGS['VAPID_PUBLIC_KEY']
+        'bid_end_time': bid_end_time,
     })
 
 @csrf_exempt
