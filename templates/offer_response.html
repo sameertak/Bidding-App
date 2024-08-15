@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h1>Offer for {{ transporter.transporter_name }}</h1>
+    <p>Destination: {{ destination.destination }}</p>
+
+    <h2>Vehicle Details:</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Index</th>
+                <th>Description</th>
+                <th>Weight (kg)</th>
+                <th>Dimensions (LxWxH)</th>
+                <th>Loading Date</th>
+                <th>Loading Type</th>
+                <th>Delivery Estimation (Days)</th>
+                <th>Additional Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for vehicle in vehicles %}
+            <tr>
+                <td>{{ vehicle.vehicle_index }}</td>
+                <td>{{ vehicle.material_description }}</td>
+                <td>{{ vehicle.material_weight }}</td>
+                <td>{{ vehicle.material_length }} x {{ vehicle.material_width }} x {{ vehicle.material_height }} cm</td>
+                <td>{{ vehicle.loading_date }}</td>
+                <td>{{ vehicle.get_loading_type_display }}</td>
+                <td>{{ vehicle.delivery_estimation }}</td>
+                <td>{{ vehicle.additional_details }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <p><strong>Total Amount:</strong> ₹{{ offer.new_amount }}</p>
+
+    <form method="POST">
+        {% csrf_token %}
+        <button type="submit" name="action" value="accept" class="btn btn-success">Accept</button>
+        <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
+    </form>
+{% endblock %}

@@ -1,7 +1,10 @@
 {% extends 'base.html' %}
 
 {% block content %}
+{% load static %}
+
 <h1>Your Bids</h1>
+
 <form method="get" action="{% url 'user_bids' %}">
     <div class="form-group d-flex">
         <input type="text" name="q" class="form-control" placeholder="Search by destination/reference" value="{{ search_query }}">
@@ -44,6 +47,10 @@
                     {% else %}
                         Expired
                     {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'delete_bid' bid.id %}" class="btn btn-danger btn-sm"
+                    onclick="event.stopPropagation(); return confirm('Are you sure you want to delete this bid?');">Delete</a>
                 </td>
             </tr>
             {% endfor %}

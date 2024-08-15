@@ -229,7 +229,6 @@ input {
 
 .cards {
   display: flex;
-  flex-direction: column;
   gap: 15px;
 }
 
@@ -260,12 +259,12 @@ input {
 }
 
 .cards .card p.tip {
-  font-size: 1em;
+  font-size: 1.5em;
   font-weight: 700;
 }
 
 .cards .card p.second-text {
-  font-size: .7em;
+  font-size: 1em;
 }
 
 .cards .card:hover {

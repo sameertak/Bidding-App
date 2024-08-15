@@ -27,9 +27,10 @@ SECRET_KEY = config('DJANGO_SECRET_KEY', default='your-default-secret-key')
 DEBUG = config('DJANGO_DEBUG', default=False, cast=bool)
 
 # ALLOWED_HOSTS = ['*']
-ALLOWED_HOSTS = ['SupernovaGenset.pythonanywhere.com']
-# SITE_URL = 'localhost:8000'
-SITE_URL = 'SupernovaGenset.pythonanywhere.com'
+ALLOWED_HOSTS = ['SupernovaGenset.pythonanywhere.com', 'www.supernovagen.in']
+# ALLOWED_HOSTS = ['SupernovaGenset.pythonanywhere.com', 'localhost', '0.0.0.0', '192.168.29.57']
+# SITE_URL = '192.168.29.57:8000'
+SITE_URL = 'www.supernovagen.in'
 
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'create_bid'
@@ -50,9 +51,9 @@ INSTALLED_APPS = [
 ]
 
 WEBPUSH_SETTINGS = {
-    "VAPID_PUBLIC_KEY": "BCoxnfSX175fa1P-11wYVGCLJ5fBfMJqxiUuvkHf5fcDCCe7zP0HY6pZCAdy8JUBd9W3BPtMLvgKSJIyyXMj_dM",
-    "VAPID_PRIVATE_KEY": "LgyGJ_REGXPLJb7Y8vQyff48BvpnbxIroiac8BKW5cE",
-    "VAPID_ADMIN_EMAIL": "taksamir08@gmail.com"
+    "VAPID_PUBLIC_KEY": config("VAPID_PUBLIC_KEY"),
+    "VAPID_PRIVATE_KEY": config("VAPID_PRIVATE_KEY"),
+    "VAPID_ADMIN_EMAIL": config("VAPID_ADMIN_EMAIL")
 }
 
 MIDDLEWARE = [

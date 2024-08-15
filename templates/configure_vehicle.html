@@ -13,7 +13,7 @@
                     <div class="d-flex flex-column align-items-center">
                         <div style="margin-bottom: 15px;" class="w-75">
                             <label for="destination">Destination:</label>
-                            <input type="text" id="destination" name="destination" class="form-control" value="{{ destination }}" required>
+                            <textarea id="destination" name="destination" class="form-control" required>{{ destination }}</textarea>
                         </div>
 
                         <div style="margin-bottom: 15px;" class="w-75">
@@ -33,7 +33,7 @@
 
                         <div style="margin-bottom: 15px;" class="w-75">
                             <label for="material_description">Material Description:</label>
-                            <textarea id="material_description" name="material_description" class="form-control" required>{{ material_description }}</textarea>
+                            <input type="text" id="material_description" name="material_description" class="form-control" value="{{ material_description }}"required>
                         </div>
                         
                         <div style="margin-bottom: 15px;" class="w-75">

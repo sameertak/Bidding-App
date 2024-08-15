@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from .models import DestinationDetail, VehicleDetails, SignUpForm, TransporterDetails, TransporterToken, Bid, LOADING_TYPES, WebPushSubscription
+from .models import DestinationDetail, VehicleDetails, SignUpForm, TransporterDetails, TransporterToken, Bid, LOADING_TYPES, WebPushSubscription, ProposedOffer
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login, authenticate
@@ -23,7 +23,16 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 from pywebpush import webpush, WebPushException
 from django.views.decorators.http import require_POST
+from decouple import config
+from django.db.models import Sum
+import openpyxl
+from django.http import HttpResponse
+import calendar
 
+from twilio.rest import Client
+account_sid = config('account_sid')
+auth_token = config('auth_token')
+client = Client(account_sid, auth_token)
 
 def send_push_notification(subscription_info, data):
     try:
@@ -54,8 +63,7 @@ def save_web_push_info(request):
         if not all([endpoint, p256dh, auth]):
             return JsonResponse({'status': 'failed', 'message': 'Incomplete subscription info'})
 
-        print('CREATING USER')
-    
+
         WebPushSubscription.objects.update_or_create(
             user=request.user,
             endpoint=endpoint,
@@ -99,7 +107,8 @@ def create_bid(request):
         tz = pytz.timezone('Asia/Kolkata')
         default_time_limit =  datetime.now(tz) + timedelta(hours=2)
         default_time_limit_str = default_time_limit.strftime('%Y-%m-%dT%H:%M')
-    return render(request, 'create_bid.html', context={'groups': request.user.groups.filter(name='Bid Creators').exists, 'time_limit': default_time_limit_str, 'vapid_public_key':settings.WEBPUSH_SETTINGS['VAPID_PUBLIC_KEY']})
+    return render(request, 'create_bid.html', context={'groups': True, 'time_limit': default_time_limit_str, 'vapid_public_key':settings.WEBPUSH_SETTINGS['VAPID_PUBLIC_KEY']})
+    # return render(request, 'create_bid.html', context={'groups': request.user.groups.filter(name='Bid Creators').exists, 'time_limit': default_time_limit_str, 'vapid_public_key':settings.WEBPUSH_SETTINGS['VAPID_PUBLIC_KEY']})
 
 @login_required
 def create_contact(request):
@@ -130,7 +139,8 @@ def create_contact(request):
     return render(request, 'create_contact.html', {
         'contacts': contacts,
         'error_message': error_message,
-        'groups': request.user.groups.filter(name='Bid Creators').exists(),
+        # 'groups': request.user.groups.filter(name='Bid Creators').exists(),
+        'groups': True,
         # 'transporters': transporters_page,
     })
 
@@ -140,33 +150,43 @@ def place_bid_with_token(request, token):
     destination = transporter_token.destination
     vehicles = VehicleDetails.objects.filter(destination_id=destination)
 
-    # Handle the bidding logic here...
+    bid_end_time = destination.time_limit
+
+    # Retrieve existing bids
+    bids = Bid.objects.filter(vehicle__in=vehicles, transporter=transporter)
+    existing_bids = {bid.vehicle.id: {'amount': bid.amount} for bid in bids}
+
+    print(existing_bids)
     context = {
         'transporter': transporter,
         'destination': destination,
         'vehicles': vehicles,
+        'bid_end_time': bid_end_time,
+        'existing_bids': existing_bids,
     }
     return render(request, 'place_bid.html', context)
+
 
 def place_bid(request, destination_id, transporter_id):
     destination = get_object_or_404(DestinationDetail, id=destination_id)
     transporter = get_object_or_404(TransporterDetails, id=transporter_id)
     
-    # Fetch all vehicles associated with the destination
     vehicles = VehicleDetails.objects.filter(destination_id=destination)
+    
+    bid_end_time = destination.time_limit
+    print(f"Bid End Time: {bid_end_time}")  # Ensure this prints correctly in the console
 
     return render(request, 'place_bid.html', {
         'destination': destination,
         'transporter': transporter,
         'vehicles': vehicles,
-        'vapid_public_key': settings.WEBPUSH_SETTINGS['VAPID_PUBLIC_KEY']
+        'bid_end_time': bid_end_time,
     })
 
 @csrf_exempt
 def submit_bid(request, destination_id, transporter_id):
     destination = get_object_or_404(DestinationDetail, id=destination_id)
     transporter = get_object_or_404(TransporterDetails, id=transporter_id)
-    
     if request.method == 'POST':
         vehicle_ids = {}
         bid_amounts = {}
@@ -182,12 +202,14 @@ def submit_bid(request, destination_id, transporter_id):
         for vehicle_id in vehicle_ids:
             if vehicle_id in bid_amounts and bid_amounts[vehicle_id]:  # Check if bid_amount is present
                 vehicle = get_object_or_404(VehicleDetails, id=vehicle_ids[vehicle_id])
-                Bid.objects.create(
+                
+                # Check if bid already exists
+                bid, created = Bid.objects.update_or_create(
                     vehicle=vehicle,
                     transporter=transporter,
-                    amount=bid_amounts[vehicle_id]
+                    defaults={'amount': bid_amounts[vehicle_id]}
                 )
-                # print(vehicle, transporter, bid_amounts[vehicle_id])
+                
                 # Send web push notification
                 devices = WebPushSubscription.objects.filter(user=destination.user)
                 for device in devices:
@@ -202,7 +224,7 @@ def submit_bid(request, destination_id, transporter_id):
                         "head": "New Bid",
                         "body": f"{transporter.transporter_name} has posted a bid of ₹{bid_amounts[vehicle_id]} for {vehicle.material_description}",
                         "icon": "/static/icons/icon-512x512.png",
-                        "url": "http://localhost:8000/user_bids/"
+                        "url": f"{settings.SITE_URL}/user_bids/"
                     }
                     try:
                         send_push_notification(subscription, json.dumps(message))
@@ -212,11 +234,13 @@ def submit_bid(request, destination_id, transporter_id):
 
     # Fetch all vehicles associated with the destination
     vehicles = VehicleDetails.objects.filter(destination_id=destination)
+    existing_bids = Bid.objects.filter(transporter=transporter, vehicle__in=vehicles)
 
     return render(request, 'place_bid.html', {
         'destination': destination,
         'transporter': transporter,
-        'vehicles': vehicles  # Pass the vehicles to the template
+        'vehicles': vehicles,
+        'existing_bids': existing_bids
     })
 
 def bid_success(request):
@@ -246,6 +270,13 @@ def delete_contact(request, contact_id):
     contact = get_object_or_404(TransporterDetails, id=contact_id)
     contact.delete()
     return redirect('create_contact')
+
+@login_required
+def delete_bid(request, bid_id):
+    bid = get_object_or_404(DestinationDetail, id=bid_id)
+    bid.delete()
+    return redirect('user_bids')
+
 
 @login_required
 def configure_vehicle(request, destination_id, vehicle_index):
@@ -393,7 +424,7 @@ def save_contacts(request, destination_id):
         destination = get_object_or_404(DestinationDetail, id=destination_id)
         selected_users = destination.transporters.all()
         for transporter in selected_users:
-            token = get_random_string(64)
+            token = get_random_string(64)[:6]
             TransporterToken.objects.create(
                 transporter=transporter,
                 destination=destination,
@@ -401,7 +432,9 @@ def save_contacts(request, destination_id):
             )
             link = f"{settings.SITE_URL}{reverse('place_bid_with_token', args=[token])}"
             # Save the link or email it to the transporter
+
             print(f"Link for {transporter.transporter_name}: {link}")
+            # client.messages.create(from_=config('from_number'),to=f'+91{transporter.transporter_contact}', body=f'Click on this url to place your bid: {link}.')
 
         return redirect('user_bids')
     else:
@@ -409,14 +442,20 @@ def save_contacts(request, destination_id):
 
 @login_required
 def user_bids(request):
-    search_query = request.GET.get('q', '')
+    search_query = request.GET.get('q', '').replace(' ', '').lower()
     bids = DestinationDetail.objects.filter(user=request.user).order_by('-time_limit')
-
+    transporters = TransporterDetails.objects.filter(
+        models.Q(transporter_name__icontains=search_query),
+        models.Q(transporter_contact__icontains=search_query),
+    )
     if search_query:
+        # Preprocessing fields to remove spaces and make lowercase
         bids = bids.filter(
-            models.Q(destination__icontains=search_query) | 
-            models.Q(reference__icontains=search_query)
-        )
+            models.Q(destination__icontains=search_query) |
+            models.Q(reference__icontains=search_query) |
+            models.Q(transporters__transporter_name__iregex=r'{}.*'.format(search_query)) |
+            models.Q(transporters__transporter_contact__iregex=r'{}.*'.format(search_query))
+        ).distinct()
     
     current_time = timezone.now()
     
@@ -479,53 +518,305 @@ def login_view(request):
     signup_form = UserCreationForm()
     return render(request, 'registration/login.html', {'form': form, 'signup_form': signup_form})
 
-
-
 @login_required
 def specific_bid(request, destination_id):
     destination_obj = get_object_or_404(DestinationDetail, user=request.user, id=destination_id)
-    vehicles_obj = VehicleDetails.objects.filter(destination_id=destination_obj).annotate(
-        has_accepted_bid=Count('bid', filter=models.Q(bid__status='accepted'))
-    )
+    vehicles_obj = VehicleDetails.objects.filter(destination_id=destination_obj)
     vehicle_bids_count = {vehicle.id: Bid.objects.filter(vehicle=vehicle).count() for vehicle in vehicles_obj}
 
+    # Fetching transporters and summing up the amounts of all vehicles for the destination
+    transporter_amounts = {}
+    for transporter in destination_obj.transporters.all():
+        total_amount = Bid.objects.filter(
+            vehicle__destination_id=destination_obj,
+            transporter=transporter
+        ).aggregate(total_amount=Sum('amount'))['total_amount'] or 0
+        
+        # Fetching the final accepted amount and is_accepted flag from the ProposedOffer model
+        proposed_offer = ProposedOffer.objects.filter(
+            transporter=transporter,
+            destination=destination_obj
+        ).first()
+        
+        final_amount = proposed_offer.new_amount if proposed_offer else 0
+        is_accepted = proposed_offer.is_accepted if proposed_offer else False
+        is_proposed = proposed_offer.is_proposed if proposed_offer else False
+        is_offer_accepted = proposed_offer.is_offer_accepted if proposed_offer else False
+
+        transporter_amounts[transporter] = {
+            'total_amount': total_amount,
+            'final_amount': final_amount,
+            'is_accepted': is_accepted,
+            'is_proposed': is_proposed,
+            'is_offer_accepted': is_offer_accepted
+        }
+    
     return render(request, 'specific_bid.html', {
         'destination': destination_obj,
         'vehicles': vehicles_obj,
-        'vehicle_bids_count': vehicle_bids_count
+        'vehicle_bids_count': vehicle_bids_count,
+        'transporter_amounts': transporter_amounts,
     })
+
 
 
 @login_required
 def vehicle_bids(request, vehicle_id):
     vehicle = get_object_or_404(VehicleDetails, id=vehicle_id)
     bids = Bid.objects.filter(vehicle=vehicle).order_by('amount')
+    
+    # Get transporters linked to the destination
+    transporters = vehicle.destination_id.transporters.all()
+
+    # Create a dictionary to map transporters to their bids (if any)
+    transporter_bids = {}
+    for transporter in transporters:
+        transporter_bids[transporter] = bids.filter(transporter=transporter).first()
+
     return render(request, 'vehicle_bids.html', {
         'vehicle': vehicle,
-        'bids': bids
+        'transporter_bids': transporter_bids
     })
 
+
 @require_POST
 @login_required
-def accept_bid(request, bid_id):
-    bid = get_object_or_404(Bid, id=bid_id)
-    if bid.vehicle.destination_id.user == request.user:
-        # Accept the selected bid
-        bid.status = 'accepted'
-        bid.accepted_by = request.user
-        print(bid.accepted_by)
-        bid.save()
-        
-        # Reject all other bids for the same vehicle
-        Bid.objects.filter(vehicle=bid.vehicle).exclude(id=bid.id).update(status='rejected')
+def accept_transporter_offer(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        transporter_id = data.get('transporter_id')
+        destination_id = data.get('destination_id')
+        final_amount = data.get('amount')
+
+        transporter = get_object_or_404(TransporterDetails, id=transporter_id)
+        destination = get_object_or_404(DestinationDetail, id=destination_id)
+
+        # Set all other offers for this destination to not accepted
+        ProposedOffer.objects.filter(destination=destination).update(is_accepted=False, is_proposed=False)
+
+        # Get or create the offer to be accepted
+        proposed_offer, created = ProposedOffer.objects.get_or_create(
+            transporter=transporter,
+            destination=destination,
+            # defaults={'new_amount': final_amount},
+        )
+
+        if not created:
+            proposed_offer.new_amount = final_amount
+
+        proposed_offer.is_accepted = True
+        proposed_offer.new_amount = final_amount
+        proposed_offer.accepted_by = request.user
+        proposed_offer.accepted_at = timezone.now()
+        proposed_offer.save()
+
+        return JsonResponse({'status': 'success'})
+    
+    return JsonResponse({'error': 'Invalid request method.'}, status=405)
+
+@require_POST
+@login_required
+def submit_new_offer(request):
+    data = json.loads(request.body)
+    transporter_id = data.get('transporter_id')
+    new_offer = data.get('new_offer')
+    destination_id = data.get('destination_id')
+
+    transporter = TransporterDetails.objects.get(id=transporter_id)
+    destination = get_object_or_404(DestinationDetail, id=destination_id)
+
+    # Set all other offers for this destination to not accepted and not proposed
+    ProposedOffer.objects.filter(destination=destination).update(is_accepted=False, is_proposed=False)
+
+    # Create or update the proposed offer
+    proposed_offer, created = ProposedOffer.objects.get_or_create(
+        transporter=transporter,
+        destination=destination,
+        defaults={'new_amount': new_offer},
+    )
+
+    if not created:
+        proposed_offer.new_amount = new_offer
+
+    proposed_offer.is_proposed = True
+    proposed_offer.is_accepted = False  # Newly proposed offer should not be accepted yet
+    proposed_offer.save()
+
+    # Generate token and link
+    token = get_random_string(64)[:6]
+    TransporterToken.objects.create(
+        transporter=transporter,
+        destination=destination,
+        token=token
+    )
+    link = f"{settings.SITE_URL}{reverse('offer_response', args=[token])}"
+
+    # Send the link via SMS or email
+    client.messages.create(
+        from_=config('from_number'),
+        to=f'+91{transporter.transporter_contact}',
+        body=f'Click on this url to accept or reject the offer: {link}.'
+    )
+
     return JsonResponse({'status': 'success'})
 
 
 @require_POST
 @login_required
-def reject_bid(request, bid_id):
-    bid = get_object_or_404(Bid, id=bid_id)
-    if bid.vehicle.destination_id.user == request.user:
-        bid.status = 'rejected'
-        bid.save()
+def revoke_offer(request):
+    data = json.loads(request.body)
+    destination_id = data.get('destination_id')
+    transporter_id = data.get('transporter_id')
+
+    transporter = TransporterDetails.objects.get(id=transporter_id)
+    destination = get_object_or_404(DestinationDetail, id=destination_id)
+
+    # Set all other offers for this destination to not accepted and not proposed
+    ProposedOffer.objects.filter(destination=destination, transporter=transporter).update(is_accepted=False, is_proposed=False)
     return JsonResponse({'status': 'success'})
+
+
+def handle_offer_response(request, token):
+    transporter_token = get_object_or_404(TransporterToken, token=token)
+    transporter = transporter_token.transporter
+    destination = transporter_token.destination
+
+    offer = get_object_or_404(ProposedOffer, transporter=transporter, destination=destination, is_proposed=True)
+    # Get all vehicles associated with the destination
+    vehicles = VehicleDetails.objects.filter(destination_id=destination)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'accept':
+            offer.is_accepted = True
+            offer.is_offer_accepted = True
+            offer.is_proposed = False
+            offer.accepted_at = timezone.now()
+            offer.save()
+
+            # Make sure all other offers are marked as not accepted
+            ProposedOffer.objects.filter(destination=destination).exclude(id=offer.id).update(is_accepted=False)
+
+            devices = WebPushSubscription.objects.filter(user=destination.user)
+            for device in devices:
+                subscription = {
+                    "endpoint": device.endpoint,
+                    "keys": {
+                        "p256dh": device.p256dh,
+                        "auth": device.auth
+                    }
+                }
+                message = {
+                    "head": "New Bid",
+                    "body": f"{transporter.transporter_name} has accepted your offer!",
+                    "icon": "/static/icons/icon-512x512.png",
+                    "url": f"{settings.SITE_URL}/bid/{destination.id}"
+                }
+                try:
+                    send_push_notification(subscription, json.dumps(message))
+                except WebPushException as ex:
+                    print(f"Error sending push notification: {repr(ex)}")
+            return render(request, 'thank_you.html')
+
+        elif action == 'reject':
+            offer.is_proposed = False
+            offer.is_offer_accepted = False
+            offer.is_accepted = False
+            offer.save()
+            return render(request, 'thank_you.html')
+
+    context = {
+        'transporter': transporter,
+        'destination': destination,
+        'offer': offer,
+        'vehicles': vehicles,
+    }
+    return render(request, 'offer_response.html', context)
+
+@login_required
+def generate_report(request):
+    current_date = datetime.today()  # Now it uses the correct method
+    current_year = current_date.year
+    current_month = current_date.month
+
+    # Calculate the next month and year
+    if current_month == 12:
+        next_month = 1
+        next_year = current_year + 1
+    else:
+        next_month = current_month + 1
+        next_year = current_year
+
+    year_range = range(current_year - 5, current_year + 6)  # Example year range
+
+    context = {
+        'current_year': current_year,
+        'current_month': f'{current_month:02}',  # Format as 01, 02, etc.
+        'next_year': next_year,
+        'next_month': f'{next_month:02}',
+        'year_range': year_range,
+    }
+    return render(request, 'generate_report.html', context)
+
+@login_required
+def download_report(request):
+    start_month = int(request.POST.get('start_month'))
+    end_month = int(request.POST.get('end_month'))
+    start_year = int(request.POST.get('start_year'))
+    end_year = int(request.POST.get('end_year'))
+
+    # Calculate the last day of the end month
+    _, last_day_of_end_month = calendar.monthrange(end_year, end_month)
+    
+    # Convert start and end dates to datetime objects for filtering
+    start_date = datetime(start_year, start_month, 1)
+    end_date = datetime(end_year, end_month, last_day_of_end_month)
+
+    # Create a new Excel workbook and sheet
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Detailed Report"
+
+    # Write the headers
+    headers = [
+        "Destination", "Transporter Name", "Total Bid Amount", 
+        "Offer Amount", "Material Description", "Loading Date"
+    ]
+    ws.append(headers)
+
+    # Query the data based on the filtered dates
+    destinations = DestinationDetail.objects.all()
+    for destination in destinations:
+        transporters = destination.transporters.all()
+
+        for transporter in transporters:
+            bids = Bid.objects.filter(
+                transporter=transporter,
+                vehicle__destination_id=destination,
+                created_at__range=[start_date, end_date]
+            )
+            total_bid_amount = bids.aggregate(total=models.Sum('amount'))['total'] or 0
+
+            proposed_offers = ProposedOffer.objects.filter(
+                transporter=transporter,
+                destination=destination,
+                created_at__range=[start_date, end_date]
+            )
+            offer_amount = proposed_offers.aggregate(total=models.Sum('new_amount'))['total'] or 0
+
+            for bid in bids:
+                row = [
+                    destination.destination,  # Destination Name
+                    transporter.transporter_name,  # Transporter Name
+                    total_bid_amount,  # Total Bid Amount
+                    offer_amount,  # Offer Amount
+                    bid.vehicle.material_description,  # Material Description
+                    bid.vehicle.loading_date,  # Loading Date
+                ]
+                ws.append(row)
+
+    # Generate the response with the Excel file
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename=report_{start_month}_{start_year}_to_{end_month}_{end_year}.xlsx'
+    wb.save(response)
+    return response
