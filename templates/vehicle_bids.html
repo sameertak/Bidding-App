@@ -16,23 +16,27 @@
                 <th>Transporter Name</th>
                 <th>Bid Amount</th>
                 <th>Bid Time</th>
-                <th>Status</th>
-                <th>Actions</th>
-                <th>Accepted By</th>
+                <!-- <th>Status</th> -->
+                <!-- <th>Actions</th> -->
+                <!-- <th>Accepted By</th> -->
             </tr>
         </thead>
         <tbody>
-            {% for bid in bids %}
-            <tr class="{% if bid.status == 'accepted' %}table-success{% elif bid.status == 'rejected' %}table-danger{% endif %}">
-                <td>{{ bid.transporter.transporter_name }}</td>
-                <td>{{ bid.amount }}</td>
-                <td>{{ bid.created_at }}</td>
-                <td>{{ bid.status }}</td>
-                <td>
-                    <button onclick="acceptBid({{ bid.id }})" class="btn btn-success btn-sm">Accept</button>
-                    <button onclick="rejectBid({{ bid.id }})" class="btn btn-danger btn-sm">Reject</button>
-                </td>
-                <td>{% if bid.status == 'accepted' %}{{ bid.accepted_by.username }}{% endif %}</td>
+            {% for transporter, bid in transporter_bids.items %}
+            <tr class="{% if bid and bid.status == 'accepted' %}table-success{% elif bid and bid.status == 'rejected' %}table-danger{% endif %}">
+                <td>{{ transporter.transporter_name }}</td>
+                <td>{% if bid %}{{ bid.amount }}{% else %}0{% endif %}</td>
+                <td>{% if bid %}{{ bid.created_at }}{% else %}N/A{% endif %}</td>
+                <!-- <td>{% if bid %}{{ bid.status }}{% else %}No Bid{% endif %}</td> -->
+                <!-- <td>
+                    {% if bid %}
+                        <button onclick="acceptBid({{ bid.id }})" class="btn btn-success btn-sm">Accept</button>
+                        <button onclick="rejectBid({{ bid.id }})" class="btn btn-danger btn-sm">Reject</button>
+                    {% else %}
+                        <span class="text-muted">No Actions</span>
+                    {% endif %}
+                </td> -->
+                <!-- <td>{% if bid and bid.status == 'accepted' %}{{ bid.accepted_by.username }}{% endif %}</td> -->
             </tr>
             {% endfor %}
         </tbody>
@@ -58,34 +62,6 @@
                 }
             }       
         }
-    }
-
-    function acceptBid(bidId) {
-        fetch(`/accept_bid/${bidId}/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            }
-        }).then(response => {
-            if (response.ok) {
-                location.reload();
-            }
-        });
-    }
-
-    function rejectBid(bidId) {
-        fetch(`/reject_bid/${bidId}/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            }
-        }).then(response => {
-            if (response.ok) {
-                location.reload();
-            }
-        });
     }
 </script>
 {% endblock %}

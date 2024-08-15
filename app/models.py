@@ -10,7 +10,7 @@ LOADING_TYPES = (
 
 class VehicleDetails(models.Model):
     destination_id = models.ForeignKey("DestinationDetail", on_delete=models.CASCADE)
-    material_description = models.TextField()
+    material_description = models.CharField(max_length=20)
     vehicle_index = models.IntegerField()
     material_weight = models.IntegerField()
     material_height = models.IntegerField()
@@ -37,9 +37,9 @@ class TransporterDetails(models.Model):
 
 class DestinationDetail(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    pickup = models.CharField(max_length=40)
-    destination = models.CharField(max_length=40)
-    destination_link = models.CharField(max_length=50)
+    pickup = models.TextField()
+    destination = models.TextField()
+    destination_link = models.TextField()
     number_of_vehicles = models.IntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
     time_limit = models.DateTimeField()
@@ -68,10 +68,10 @@ class Bid(models.Model):
     )
     vehicle = models.ForeignKey('VehicleDetails', on_delete=models.CASCADE)
     transporter = models.ForeignKey('TransporterDetails', on_delete=models.CASCADE)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     created_at = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
-    accepted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='accepted_bids')
+    # status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    # accepted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='accepted_bids')
 
     def __str__(self):
         return f"Bid by {self.transporter.transporter_name} for {self.vehicle.material_description} - ₹{self.amount}"
@@ -83,3 +83,18 @@ class WebPushSubscription(models.Model):
     p256dh = models.CharField(max_length=100)
     auth = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class ProposedOffer(models.Model):
+    transporter = models.ForeignKey(TransporterDetails, on_delete=models.CASCADE)
+    destination = models.ForeignKey(DestinationDetail, on_delete=models.CASCADE)
+    new_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    # New fields to track acceptance
+    is_accepted = models.BooleanField(default=False)
+    is_offer_accepted = models.BooleanField(default=False)
+    # accepted_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    accepted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    is_proposed = models.BooleanField(default=False)  # New field

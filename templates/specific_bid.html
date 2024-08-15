@@ -3,6 +3,10 @@
 
 {% block back_button %}
 <a href="javascript:history.back()" class="btn btn-secondary mb-3">Go Back</a>
+<div class="mb-3">
+    <a href="{% url 'configure_vehicle' destination_id=destination.id vehicle_index=1 %}?from_edit=true" class="btn btn-primary">Edit Vehicle Configuration</a>
+</div>
+
 {% endblock %}
 
 {% block content %}
@@ -10,16 +14,24 @@
     .clickable-row {
         cursor: pointer;
     }
+
     .accepted-bid-row {
-        background-color: #d4edda;
+        background-color: #d4edda !important;
+    }
+
+    .proposed-bid-row {
+        background-color: #fff3cd !important;
     }
 </style>
 
-<h1>Vehicle Details for {{ destination.destination }}</h1>
-<div class="table-responsive">
+<h1>{{ destination.reference }}</h1>
+<h3>Destination: {{ destination.destination }}</h3>
+
+<div class="table-responsive mb-4">
     <table class="table table-striped">
         <thead>
             <tr>
+                <th>Material Description</th>
                 <th>Material Dimensions</th>
                 <th>Material Weight</th>
                 <th>Delivery Estimation</th>
@@ -30,16 +42,143 @@
         </thead>
         <tbody>
             {% for vehicle in vehicles %}
-            <tr class="clickable-row {% if vehicle.has_accepted_bid %}accepted-bid-row{% endif %}" onclick="window.location.href='{% url 'vehicle_bids' vehicle.id %}'">
+            <tr class="clickable-row {% if vehicle.has_accepted_bid %}accepted-bid-row{% endif %}"
+                onclick="window.location.href='{% url 'vehicle_bids' vehicle.id %}'">
+                <td>{{ vehicle.material_description }}</td>
                 <td>{{ vehicle.material_length }} x {{ vehicle.material_width }} x {{ vehicle.material_height }}</td>
-                <td>{{ vehicle.material_weight }}</td>
-                <td>{{ vehicle.delivery_estimation }}</td>
+                <td>{{ vehicle.material_weight }} kg</td>
+                <td>{{ vehicle.delivery_estimation }} days</td>
                 <td>{{ vehicle.loading_date }}</td>
-                <td>{{ vehicle.loading_type }}</td>
-                <td>{{ vehicle_bids_count|get_value:vehicle.id }}</td> <!-- Display number of bids -->
+                {% if vehicle.loading_type == 'ftl' %}
+                <td>Full Truck Load</td>
+                {% else %}
+                <td>Part Truck Load</td>
+                {% endif %}
+                <td>{{ vehicle_bids_count|get_value:vehicle.id }}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+
+<!-- New Transporters Table -->
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Transporter Name</th>
+            <th>Total Bid Amount</th>
+            <th>Final Amount</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for transporter, amounts in transporter_amounts.items %}
+        <tr id="transporter-row-{{ transporter.id }}">
+            <td class="{% if amounts.is_accepted %}accepted-bid-row{% elif amounts.is_proposed %}proposed-bid-row{% endif %}">
+                {{ transporter.transporter_name }}
+            </td>
+            <td class="{% if amounts.is_accepted %}accepted-bid-row{% elif amounts.is_proposed %}proposed-bid-row{% endif %}">
+                ₹{{ amounts.total_amount }}
+            </td>
+            <td class="{% if amounts.is_accepted %}accepted-bid-row{% elif amounts.is_proposed %}proposed-bid-row{% endif %}">
+                ₹{{ amounts.final_amount }}
+            </td>
+            <td class="{% if amounts.is_accepted %}accepted-bid-row{% elif amounts.is_proposed %}proposed-bid-row{% endif %}">
+                {% if amounts.is_offer_accepted %}
+                    <span class="badge bg-success">Offer Accepted</span>
+                    <button class="btn btn-danger btn-sm" onclick="revokeOffer('{{ transporter.id }}', '{{ destination.id }}')">Revoke</button>
+                {% elif amounts.is_proposed %}
+                    <span class="badge bg-warning text-light">Offer Proposed</span>
+                    <button class="btn btn-danger btn-sm" onclick="revokeOffer('{{ transporter.id }}', '{{ destination.id }}')">Revoke</button>
+                {% elif amounts.is_accepted%}
+                    <span class="badge bg-success text-light">Offer Accepted</span>
+                    <button class="btn btn-danger btn-sm" onclick="revokeOffer('{{ transporter.id }}', '{{ destination.id }}')">Revoke</button>
+                {% else %}
+                    <button class="btn btn-success btn-sm" onclick="acceptTransporterOffer('{{ transporter.id }}', '{{ destination.id }}', '{{ amounts.total_amount }}')">Accept Transporter Offer</button>
+                    <button class="btn btn-warning btn-sm" onclick="toggleOfferInput('{{ transporter.id }}')">Propose New Offer</button>
+                {% endif %}
+            </td>
+        </tr>
+        <tr id="offer-input-row-{{ transporter.id }}" style="display:none;">
+            <td colspan="4">
+                <div id="offer-input-{{ transporter.id }}">
+                    <input type="number" id="new-offer-{{ transporter.id }}" placeholder="Enter new offer amount">
+                    <button class="btn btn-primary btn-sm" onclick="submitNewOffer('{{ transporter.id }}', '{{ destination.id }}')">Submit</button>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
 </div>
+
+<script>
+function toggleOfferInput(transporterId) {
+    var inputRow = document.getElementById('offer-input-row-' + transporterId);
+    inputRow.style.display = inputRow.style.display === 'none' ? 'table-row' : 'none';
+}
+
+function revokeOffer(transporterId, destinationId) {
+    fetch(`/revoke_offer/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            transporter_id: transporterId,
+            destination_id: destinationId,
+        })
+    }).then(response => {
+        if (response.ok) {
+            location.reload();  // Reload the page to reflect the backend changes
+        } else {
+            console.error('Failed to submit the new offer.');
+        }
+    }).catch(error => console.error('Error:', error));
+
+}
+
+function submitNewOffer(transporterId, destinationId) {
+    var newOffer = document.getElementById('new-offer-' + transporterId).value;
+    fetch(`/submit_new_offer/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            transporter_id: transporterId,
+            destination_id: destinationId,
+            new_offer: newOffer
+        })
+    }).then(response => {
+        if (response.ok) {
+            location.reload();  // Reload the page to reflect the backend changes
+        } else {
+            console.error('Failed to submit the new offer.');
+        }
+    }).catch(error => console.error('Error:', error));
+}
+
+function acceptTransporterOffer(transporterId, destinationId, amount) {
+    fetch(`/accept_transporter_offer/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            transporter_id: transporterId,
+            destination_id: destinationId,
+            amount: amount
+        })
+    }).then(response => {
+        if (response.ok) {
+            location.reload();
+        } else {
+            console.error('Failed to accept the transporter offer.');
+        }
+    }).catch(error => console.error('Error:', error));
+}
+</script>
 {% endblock %}

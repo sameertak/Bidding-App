@@ -27,9 +27,9 @@ SECRET_KEY = config('DJANGO_SECRET_KEY', default='your-default-secret-key')
 DEBUG = config('DJANGO_DEBUG', default=False, cast=bool)
 
 # ALLOWED_HOSTS = ['*']
-ALLOWED_HOSTS = ['SupernovaGenset.pythonanywhere.com', 'localhost']
-# SITE_URL = 'localhost:8000'
-SITE_URL = 'SupernovaGenset.pythonanywhere.com'
+ALLOWED_HOSTS = ['SupernovaGenset.pythonanywhere.com', 'www.supernovagen.in']
+# SITE_URL = '192.168.29.57:8000'
+SITE_URL = 'www.supernovagen.in'
 
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'create_bid'
@@ -92,12 +92,10 @@ WSGI_APPLICATION = 'bidding_app.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': config('DJANGO_DB_NAME'),
-        # 'NAME': f"{config('DJANGO_DB_USER')}${config('DJANGO_DB_NAME')}",
+        'NAME': f"{config('DJANGO_DB_USER')}${config('DJANGO_DB_NAME')}",
         'USER': config('DJANGO_DB_USER'),
         'PASSWORD': config('DJANGO_DB_PASSWORD'),
-        'HOST': config('DJANGO_DB_HOST', default='localhost'),
-        # 'HOST': config('DJANGO_DB_HOST', default='SupernovaGenset.mysql.pythonanywhere-services.com'),
+        'HOST': config('DJANGO_DB_HOST', default='SupernovaGenset.mysql.pythonanywhere-services.com'),
         'PORT': config('DJANGO_DB_PORT', default=3306, cast=int),
     }
 }

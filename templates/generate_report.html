@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block content %}
+{% load static %}
+
+<h2>Generate Excel Report</h2>
+<form method="post" action="{% url 'download_report' %}" id="reportForm">
+    {% csrf_token %}
+
+    <table class="table">
+        <tr>
+            <td>
+                <label for="start_month">Start Month:</label>
+            </td>
+            <td>
+                <select name="start_month" id="start_month" class="form-control">
+                    <option value="01" {% if current_month == '01' %}selected{% endif %}>January</option>
+                    <option value="02" {% if current_month == '02' %}selected{% endif %}>February</option>
+                    <option value="03" {% if current_month == '03' %}selected{% endif %}>March</option>
+                    <option value="04" {% if current_month == '04' %}selected{% endif %}>April</option>
+                    <option value="05" {% if current_month == '05' %}selected{% endif %}>May</option>
+                    <option value="06" {% if current_month == '06' %}selected{% endif %}>June</option>
+                    <option value="07" {% if current_month == '07' %}selected{% endif %}>July</option>
+                    <option value="08" {% if current_month == '08' %}selected{% endif %}>August</option>
+                    <option value="09" {% if current_month == '09' %}selected{% endif %}>September</option>
+                    <option value="10" {% if current_month == '10' %}selected{% endif %}>October</option>
+                    <option value="11" {% if current_month == '11' %}selected{% endif %}>November</option>
+                    <option value="12" {% if current_month == '12' %}selected{% endif %}>December</option>
+                </select>
+            </td>
+            <td>
+                <label for="start_year">Start Year:</label>
+            </td>
+            <td>
+                <select name="start_year" id="start_year" class="form-control">
+                    {% for year in year_range %}
+                    <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>{{ year }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+        </tr>
+
+        <tr>
+            <td>
+                <label for="end_month">End Month:</label>
+            </td>
+            <td>
+                <select name="end_month" id="end_month" class="form-control">
+                    <option value="01" {% if next_month == '01' %}selected{% endif %}>January</option>
+                    <option value="02" {% if next_month == '02' %}selected{% endif %}>February</option>
+                    <option value="03" {% if next_month == '03' %}selected{% endif %}>March</option>
+                    <option value="04" {% if next_month == '04' %}selected{% endif %}>April</option>
+                    <option value="05" {% if next_month == '05' %}selected{% endif %}>May</option>
+                    <option value="06" {% if next_month == '06' %}selected{% endif %}>June</option>
+                    <option value="07" {% if next_month == '07' %}selected{% endif %}>July</option>
+                    <option value="08" {% if next_month == '08' %}selected{% endif %}>August</option>
+                    <option value="09" {% if next_month == '09' %}selected{% endif %}>September</option>
+                    <option value="10" {% if next_month == '10' %}selected{% endif %}>October</option>
+                    <option value="11" {% if next_month == '11' %}selected{% endif %}>November</option>
+                    <option value="12" {% if next_month == '12' %}selected{% endif %}>December</option>
+                </select>
+            </td>
+            <td>
+                <label for="end_year">End Year:</label>
+            </td>
+            <td>
+                <select name="end_year" id="end_year" class="form-control">
+                    {% for year in year_range %}
+                    <option value="{{ year }}" {% if year == next_year %}selected{% endif %}>{{ year }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+        </tr>
+    </table>
+
+    <button type="submit" class="btn btn-primary mt-4">Download Report</button>
+</form>
+
+<script>
+    document.getElementById('reportForm').addEventListener('submit', function (e) {
+        var startMonth = parseInt(document.getElementById('start_month').value);
+        var startYear = parseInt(document.getElementById('start_year').value);
+        var endMonth = parseInt(document.getElementById('end_month').value);
+        var endYear = parseInt(document.getElementById('end_year').value);
+
+        if (endYear < startYear || (endYear === startYear && endMonth < startMonth)) {
+            alert('End date cannot be before start date.');
+            e.preventDefault(); // Prevent form submission
+        }
+    });
+</script>
+
+{% endblock %}
