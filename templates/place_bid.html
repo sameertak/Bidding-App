@@ -2,241 +2,6 @@
 {% load bid_tags %}
 {% load custom_tags %}
 {% block content %}
-<!-- <style>
-    .orange {
-        color: #ff7a01;
-    }
-
-    .form-container {
-        display: flex;
-        justify-content: center;
-        background-color: #00192586;
-        padding: 30px;
-        border-left: 5px solid #ff7a01;
-        clip-path: polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%);
-        width: 100%;
-        box-sizing: border-box;
-    }
-
-    .form {
-        width: 100%;
-        max-width: 700px;
-        box-sizing: border-box;
-    }
-
-    .content {
-        width: 100%;
-        color: #ff7a01;
-        background-color: #002733;
-        justify-content: space-between;
-        display: flex;
-        align-items: center;
-        margin-bottom: 20px;
-        padding: 10px;
-        box-sizing: border-box;
-    }
-
-    .heading {
-        display: block;
-        font-size: 1.5rem;
-        font-weight: 800;
-        margin-bottom: 20px;
-    }
-
-    .form .input,
-    .form .textarea {
-        background-color: #002733;
-        color: #a8b9c4;
-        width: 70%;
-        border: none;
-        outline: none;
-        padding: 10px;
-        font-weight: bold;
-        transition: all 0.2s ease-in-out;
-        border-left: 1px solid transparent;
-        box-sizing: border-box;
-    }
-
-    .form .input:focus,
-    .form .textarea:focus {
-        border-left: 5px solid #a8b9c4;
-    }
-
-    .form .textarea {
-        resize: none;
-        max-height: 150px;
-        margin-bottom: 20px;
-    }
-
-    .button-container {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-
-    .send-button {
-        flex-basis: 70%;
-        background: #ff7a01;
-        padding: 10px;
-        color: #001925;
-        text-align: center;
-        font-weight: bold;
-        border: 1px solid transparent;
-        transition: all 0.2s ease-in-out;
-    }
-
-    .send-button:hover {
-        background: transparent;
-        border: 1px solid #ff7a01;
-        color: #ff7a01;
-    }
-
-    .reset-button-container {
-        filter: drop-shadow(1px 1px 0px #ff7a01);
-        flex-basis: 30%;
-    }
-
-    .reset-button {
-        position: relative;
-        text-align: center;
-        text-decoration: none;
-        padding: 10px;
-        color: #ff7a01;
-        font-weight: bold;
-        background: #001925;
-        clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
-        transition: all 0.2s ease-in-out;
-    }
-
-    .reset-button:hover {
-        background: #ff7a01;
-        color: #001925;
-    }
-
-    .description {
-        font-weight: 800;
-        width: 30%;
-    }
-
-    /* Responsive Styles */
-    @media (max-width: 576px) {
-
-        .container,
-        .container-sm {
-            padding: 0;
-        }
-
-        .form-container {
-            padding: 20px;
-        }
-
-        .form {
-            width: 100%;
-        }
-
-        .content {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-        .button-container {
-            flex-direction: column;
-        }
-
-        .send-button,
-        .reset-button-container {
-            flex-basis: 100%;
-        }
-
-        .reset-button-container {
-            margin-top: 10px;
-        }
-    }
-
-    #countdown {
-        font-size: 2rem;
-        font-weight: bold;
-        color: red;
-        text-align: center;
-        margin-bottom: 20px;
-    }
-</style>
-
-<div class="form-container">
-    <div class="form">
-        <h2 class="content" style="background-color: white; color: black;">{{ destination.reference }}</h2>
-        <div id="countdown"></div>
-        <span class="heading">Hello {{ transporter.transporter_name }}</span>
-        <form method="POST" action="{% url 'submit_bid' destination.id transporter.id %}">
-            {% csrf_token %}
-            <div id="vehicleCarousel" class="carousel slide" data-interval="false">
-                <div class="carousel-inner">
-                    {% for vehicle in vehicles %}
-                    <div class="carousel-item {% if forloop.first %}active{% endif %}">
-                        <input type="hidden" name="vehicle_id_{{ vehicle.id }}" value="{{ vehicle.id }}">
-                        <span class="content">
-                            <label class="description"> Destination: </label>
-                            <input type="text" class="input" value="{{ destination.destination }}" readonly>
-                        </span>
-                        <span class="content">
-                            <label class="description"> Maps Link: </label>
-                            <input type="text" class="input" value="{{ destination.destination_link }}" readonly>
-                        </span>
-                        <span class="content">
-                            <label class="description"> Material Desc.: </label>
-                            <textarea class="textarea" readonly>{{ vehicle.material_description }}</textarea>
-                        </span>
-                        <span class="content">
-                            <label class="description"> Dimensions (l x w x h): </label>
-                            <input type="text" class="input"
-                                value="{{ vehicle.material_length }} x {{ vehicle.material_width }} x {{ vehicle.material_height }}"
-                                readonly>
-                        </span>
-                        <span class="content">
-                            <label class="description"> Weight: </label>
-                            <input type="text" class="input" value="{{ vehicle.material_weight }} Kg" readonly>
-                        </span>
-                        <span class="content">
-                            <label class="description"> Additional Details: </label>
-                            <input type="text" class="input" value="{{ vehicle.additional_details }}" readonly>
-                        </span>
-                        <span class="content">
-                            <label class="description"> Delivery Estimation: </label>
-                            <input type="text" class="input" value="{{ vehicle.delivery_estimation }} Days" readonly>
-                        </span>
-                        <span class="content">
-                            <label class="description"> Loading Date: </label>
-                            <input type="text" class="input" value="{{ vehicle.loading_date }}" readonly>
-                        </span>
-                        <span class="heading">Place bid</span>
-                        <span class="content">
-                            <label class="description"> Amount:</label>
-                            <span style="display: flex;width: 70%;align-items: center;font-weight: bold;">₹
-                                <input type="number" class="input" name="bid_amount_{{ vehicle.id }}"
-                                    placeholder="Enter Bid amount here"
-                                    value="{{ existing_bids|get_value_2:vehicle.id }}" required>
-                            </span>
-                        </span>                
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <div class="button-container" style="flex-direction: column;">
-                <div class="reset-button-container" style="display: flex; justify-content: space-between;">
-                    <a class="reset-button" href="#vehicleCarousel" role="button" data-slide="prev">
-                        Previous
-                    </a>
-                    <a class="reset-button" href="#vehicleCarousel" role="button" data-slide="next">
-                        Next
-                    </a>
-                </div>
-                <button id="subscribeButton" type="submit" class="send-button">Send</button>
-            </div>
-        </form>
-    </div>
-</div> -->
-<!-- <div class="form"> -->
 <style>
     #countdown {
         font-size: 2rem;
@@ -246,11 +11,12 @@
         margin-bottom: 20px;
     }
 </style>
+
 <h2 class="content" style="background-color: white; color: black;">{{ destination.reference }}</h2>
 <div id="countdown"></div>
 <span class="heading">Hello {{ transporter.transporter_name }}</span>
 <form method="POST" action="{% url 'submit_bid' destination.id transporter.id %}">
-
+    {% csrf_token %}
     <table class="table">
         <thead>
             <tr>
@@ -264,83 +30,71 @@
                 <th>Delivery Estimation (Days)</th>
                 <th>Loading Date</th>
                 <th>Loading Type</th>
-                <th>Enter Your Amount ()</th>
+                <th>Enter Your Amount (₹)</th>
             </tr>
         </thead>
-        {% for vehicle in vehicles %}
-        <tr>
-
-            <td>
-                {{ forloop.counter }}
-            </td>
-            <td>
-                {{destination.destination}}
-            </td>
-            <td>
-                {{destination.destination_link}}
-            </td>
-            <td>
-                {{vehicle.material_description}}
-            </td>
-            <td>
-                {{ vehicle.material_length }} x {{ vehicle.material_width }} x {{ vehicle.material_height }}
-            </td>
-            <td>
-                {{ vehicle.material_weight }} Kg
-            </td>
-            <td>
-                {{ vehicle.additional_details }}
-            </td>
-            <td>
-                {{ vehicle.delivery_estimation }}
-            </td>
-            <td>
-                {{ vehicle.loading_date }}
-            </td>
-            {% if vehicle.loading_type == 'ftl' %}
-            <td>Full Truck Load</td>
-            {% else %}
-            <td>Part Truck Load</td>
-            {% endif %}
-            <td>
-                <input type="hidden" name="vehicle_id_{{ vehicle.id }}" value="{{ vehicle.id }}">
-                <input type="number" class="input" name="bid_amount_{{ vehicle.id }}"
-                    placeholder="Enter Bid amount here" value="{{ existing_bids|get_value_2:vehicle.id }}" required>
-            </td>
-        </tr>
-        {% endfor %}
-
-
+        <tbody>
+            {% for vehicle in vehicles %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{destination.destination}}</td>
+                <td>{{destination.destination_link}}</td>
+                <td>{{vehicle.material_description}}</td>
+                <td>{{ vehicle.material_length }} x {{ vehicle.material_width }} x {{ vehicle.material_height }}</td>
+                <td>{{ vehicle.material_weight }} Kg</td>
+                <td>{{ vehicle.additional_details }}</td>
+                <td>{{ vehicle.delivery_estimation }}</td>
+                <td>{{ vehicle.loading_date }}</td>
+                <td>{% if vehicle.loading_type == 'ftl' %}Full Truck Load{% else %}Part Truck Load{% endif %}</td>
+                <td>
+                    <input type="hidden" name="vehicle_id_{{ vehicle.id }}" value="{{ vehicle.id }}">
+                    <input type="number" class="input bid-amount" name="bid_amount_{{ vehicle.id }}"
+                        placeholder="Enter Bid amount here" value="{{ existing_bids|get_value_2:vehicle.id }}" required>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="10" style="text-align: right; font-weight: bold;">Total Amount:</td>
+                <td><span id="total-amount" style="font-weight: bold;">0</span></td>
+            </tr>
+        </tfoot>
     </table>
     <button id="subscribeButton" type="submit" class="btn btn-primary w-100">Send</button>
-
 </form>
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
 <script>
-    document.addEventListener('DOMContentLoaded', (event) => {
-        // Set the date we're counting down to
+    document.addEventListener('DOMContentLoaded', function () {
+        const bidInputs = document.querySelectorAll('.bid-amount');
+        const totalAmountElement = document.getElementById('total-amount');
+
+        function calculateTotal() {
+            let total = 0;
+            bidInputs.forEach(input => {
+                const value = parseFloat(input.value) || 0;
+                total += value;
+            });
+            totalAmountElement.textContent = '₹' + total.toFixed(2) +'/-';
+        }
+
+        // Initial calculation
+        calculateTotal();
+
+        // Add event listeners to all bid amount inputs
+        bidInputs.forEach(input => {
+            input.addEventListener('input', calculateTotal);
+        });
+
+        // Countdown script
         var countDownDate = new Date("{{ bid_end_time|date:'Y-m-d\\TH:i:s' }}").getTime();
-        // Update the count down every 1 second
         var x = setInterval(function () {
-
-            // Get today's date and time
             var now = new Date().getTime();
-
-            // Find the distance between now and the count down date
             var distance = countDownDate - now;
-
-            // Time calculations for days, hours, minutes and seconds
             var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
             var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
             var seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-            // Display the result in the element with id="countdown"
-            document.getElementById("countdown").innerHTML = hours + "h "
-                + minutes + "m " + seconds + "s ";
-
-            // If the count down is over, write some text
+            document.getElementById("countdown").innerHTML = hours + "h " + minutes + "m " + seconds + "s ";
             if (distance < 0) {
                 clearInterval(x);
                 document.getElementById("countdown").innerHTML = "EXPIRED";
@@ -349,4 +103,5 @@
         }, 1000);
     });
 </script>
+
 {% endblock %}
