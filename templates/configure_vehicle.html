@@ -68,7 +68,7 @@
                         
                         <div style="margin-bottom: 15px;" class="w-75">
                             <label for="loading_date">Loading Date:</label>
-                            <input type="date" id="loading_date" name="loading_date" class="form-control" value="{{ loading_date }}" required>
+                            <input type="text" id="loading_date" name="loading_date" class="form-control" placeholder="MM/DD/YYYY" required>
                         </div>
                         
                         <div style="margin-bottom: 15px;" class="w-75">
@@ -96,4 +96,23 @@
         </div>
     </div>
 </div>
+<script>
+    document.getElementById('loading_date').addEventListener('input', function(e) {
+    let value = e.target.value;
+    
+    // Remove any non-digit characters
+    value = value.replace(/\D/g, '');
+    
+    // Format the value
+    if (value.length >= 3) {
+        value = value.slice(0, 2) + '/' + value.slice(2);
+    }
+    if (value.length >= 5) {
+        value = value.slice(0, 5) + '/' + value.slice(5, 9);
+    }
+    
+    e.target.value = value;
+});
+
+</script>
 {% endblock %}
