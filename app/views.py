@@ -107,7 +107,8 @@ def create_bid(request):
         tz = pytz.timezone('Asia/Kolkata')
         default_time_limit =  datetime.now(tz) + timedelta(hours=2)
         default_time_limit_str = default_time_limit.strftime('%Y-%m-%dT%H:%M')
-    return render(request, 'create_bid.html', context={'groups': request.user.groups.filter(name='Bid Creators').exists, 'time_limit': default_time_limit_str, 'vapid_public_key':settings.WEBPUSH_SETTINGS['VAPID_PUBLIC_KEY']})
+    return render(request, 'create_bid.html', context={'groups': True, 'time_limit': default_time_limit_str, 'vapid_public_key':settings.WEBPUSH_SETTINGS['VAPID_PUBLIC_KEY']})
+    # return render(request, 'create_bid.html', context={'groups': request.user.groups.filter(name='Bid Creators').exists, 'time_limit': default_time_limit_str, 'vapid_public_key':settings.WEBPUSH_SETTINGS['VAPID_PUBLIC_KEY']})
 
 @login_required
 def create_contact(request):
@@ -138,7 +139,8 @@ def create_contact(request):
     return render(request, 'create_contact.html', {
         'contacts': contacts,
         'error_message': error_message,
-        'groups': request.user.groups.filter(name='Bid Creators').exists(),
+        # 'groups': request.user.groups.filter(name='Bid Creators').exists(),
+        'groups': True,
         # 'transporters': transporters_page,
     })
 
