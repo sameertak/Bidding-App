@@ -31,4 +31,5 @@ urlpatterns = [
     path('offer_response/<str:token>/', views.handle_offer_response, name='offer_response'),
     path('generate_report/', views.generate_report, name='generate_report'),
     path('download_report/', views.download_report, name='download_report'),
+    path('download_pdf/<str:token>/', views.download_pdf, name='download_pdf'),
 ]

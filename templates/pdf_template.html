@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offer Details</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .header img {
+            max-width: 150px;
+            height: auto;
+        }
+        .header h1 {
+            flex-grow: 1;
+            text-align: center;
+            margin: 0;
+        }
+        .divider {
+            border-top: 2px solid #000;
+            margin: 20px 0;
+        }
+        .details, .amount-details {
+            margin: 20px 0;
+        }
+        .details p, .amount-details p { 
+            margin: 5px 0; 
+        }
+        .signature { 
+            margin-top: 50px; 
+            text-align: right; 
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #000;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="{{ logo_url }}" alt="Company Logo">
+        <h1>Supernova Engineers Ltd.</h1>
+    </div>
+    <div class="divider"></div>
+    
+    <h2>Offer Reference: {{destination.reference}}</h2>
+    <div class="details">
+        <p><strong>Transporter:</strong> {{ transporter.transporter_name }}</p>
+        <p><strong>Destination:</strong> {{ destination.destination }}</p>
+        <p><strong>Offer Date:</strong> {{ proposed_offer.accepted_at|date:"d/m/Y" }}</p>
+    </div>
+    
+    <h3>Vehicle Details</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Material Description</th>
+                <th>Weight (kg)</th>
+                <th>Dimensions (LxWxH) (cm)</th>
+                <th>Loading Date</th>
+                <th>Loading Type</th>
+                <th>Additional Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for vehicle in vehicles %}
+            <tr>
+                <td>{{ vehicle.material_description }}</td>
+                <td>{{ vehicle.material_weight }}</td>
+                <td>{{ vehicle.material_length }}x{{ vehicle.material_width }}x{{ vehicle.material_height }}</td>
+                <td>{{ vehicle.loading_date|date:"d/m/Y" }}</td>
+                <td>{% if vehicle.loading_type == 'ftl' %}Full Truck Load{% else %}Part Truck Load{% endif %}</td>
+                <td>{{ vehicle.additional_details }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <h3>Amount Details</h3>
+    <div class="amount-details">
+        <p><strong>Total Amount:</strong> {{ proposed_offer.new_amount }}</p>
+    </div>
+    
+</body>
+</html>

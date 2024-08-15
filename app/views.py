@@ -28,8 +28,10 @@ from django.db.models import Sum
 import openpyxl
 from django.http import HttpResponse
 import calendar
-
+from weasyprint import HTML
 from twilio.rest import Client
+from django.template.loader import render_to_string
+
 account_sid = config('account_sid')
 auth_token = config('auth_token')
 client = Client(account_sid, auth_token)
@@ -94,11 +96,22 @@ def create_bid(request):
             time_limit=time_limit,
             destination_link=destination_link
         )
-
         # Save the object to generate an ID
         new_bid.save()
 
         # Generate the unique reference
+        time_limit_str = new_bid.time_limit
+        time_format = '%Y-%m-%dT%H:%M'
+
+        # Convert string to datetime
+        time_limit = datetime.strptime(time_limit_str, time_format)
+
+        # Get current time
+        current_time = datetime.now()
+
+        # Calculate the duration
+        duration = time_limit - current_time
+        new_bid.duration = duration
         new_bid.reference = generate_unique_reference(new_bid.id)
         new_bid.save()
 
@@ -156,7 +169,6 @@ def place_bid_with_token(request, token):
     bids = Bid.objects.filter(vehicle__in=vehicles, transporter=transporter)
     existing_bids = {bid.vehicle.id: {'amount': bid.amount} for bid in bids}
 
-    print(existing_bids)
     context = {
         'transporter': transporter,
         'destination': destination,
@@ -174,7 +186,6 @@ def place_bid(request, destination_id, transporter_id):
     vehicles = VehicleDetails.objects.filter(destination_id=destination)
     
     bid_end_time = destination.time_limit
-    print(f"Bid End Time: {bid_end_time}")  # Ensure this prints correctly in the console
 
     return render(request, 'place_bid.html', {
         'destination': destination,
@@ -297,12 +308,20 @@ def configure_vehicle(request, destination_id, vehicle_index):
         material_length = request.POST['material_length']
         additional_details = request.POST['additional_details']
         delivery_estimation = request.POST['delivery_estimation']
-        loading_date = request.POST['loading_date']  # Capture loading date from POST data
+        loading_date = request.POST['loading_date']
         loading_type = request.POST['loading_type']
         destination_location = request.POST['destination']
         destination_link = request.POST['destination_link']
         number_of_vehicles = int(request.POST['number_of_vehicles'])
         pickup = request.POST['pickup']
+        try:
+            # Parse the date string into a datetime object
+            parsed_date = datetime.strptime(loading_date, '%d/%m/%Y')
+            # Format the date into yyyy-mm-dd
+            formatted_date = parsed_date.strftime('%Y-%m-%d')
+        except ValueError:
+            # Handle the case where the date format is incorrect
+            formatted_date = None  # or you can handle it differently
 
         if vehicle_details:
             # Update existing vehicle details
@@ -313,7 +332,7 @@ def configure_vehicle(request, destination_id, vehicle_index):
             vehicle_details.material_length = material_length
             vehicle_details.additional_details = additional_details
             vehicle_details.delivery_estimation = delivery_estimation
-            vehicle_details.loading_date = loading_date  # Update loading date
+            vehicle_details.loading_date = formatted_date
             vehicle_details.loading_type = loading_type
         else:
             # Create new vehicle details
@@ -327,7 +346,7 @@ def configure_vehicle(request, destination_id, vehicle_index):
                 material_length=material_length,
                 additional_details=additional_details,
                 delivery_estimation=delivery_estimation,
-                loading_date=loading_date,  # Set loading date
+                loading_date=formatted_date,  # Set loading date
                 loading_type=loading_type,
             )
         vehicle_details.save()
@@ -422,6 +441,9 @@ def configure_contact(request, destination_id):
 def save_contacts(request, destination_id):
     if request.method == 'POST':
         destination = get_object_or_404(DestinationDetail, id=destination_id)
+        current_time = timezone.now()
+        destination.time_limit = destination.duration + current_time
+        destination.save()
         selected_users = destination.transporters.all()
         for transporter in selected_users:
             token = get_random_string(64)[:6]
@@ -432,7 +454,7 @@ def save_contacts(request, destination_id):
             )
             link = f"{settings.SITE_URL}{reverse('place_bid_with_token', args=[token])}"
             # Save the link or email it to the transporter
-
+            # print(f'Click on this url to place your bid: {link}.')
             client.messages.create(from_=config('from_number'),to=f'+91{transporter.transporter_contact}', body=f'Click on this url to place your bid: {link}.')
 
         return redirect('user_bids')
@@ -597,7 +619,6 @@ def accept_transporter_offer(request):
         proposed_offer, created = ProposedOffer.objects.get_or_create(
             transporter=transporter,
             destination=destination,
-            # defaults={'new_amount': final_amount},
         )
 
         if not created:
@@ -609,7 +630,24 @@ def accept_transporter_offer(request):
         proposed_offer.accepted_at = timezone.now()
         proposed_offer.save()
 
-        return JsonResponse({'status': 'success'})
+        # Generate token and link
+        token = get_random_string(64)[:6]
+        TransporterToken.objects.create(
+            transporter=transporter,
+            destination=destination,
+            token=token
+        )
+        link = f"{settings.SITE_URL}{reverse('download_pdf', args=[token])}"
+
+        # print(f'Congratulations! Your offer was accepted. Download your PDF here: {link}.')
+        # Send SMS with the link
+        client.messages.create(
+            from_=config('from_number'),
+            to=f'+91{transporter.transporter_contact}',
+            body=f'Congratulations! Download offer copy: {link}.'
+        )
+        
+        return JsonResponse({'status': 'success', 'link': link})
     
     return JsonResponse({'error': 'Invalid request method.'}, status=405)
 
@@ -650,6 +688,7 @@ def submit_new_offer(request):
     )
     link = f"{settings.SITE_URL}{reverse('offer_response', args=[token])}"
 
+    # print(f'Click to accept or reject the offer: {link}.')
     # Send the link via SMS or email
     client.messages.create(
         from_=config('from_number'),
@@ -706,7 +745,7 @@ def handle_offer_response(request, token):
                     }
                 }
                 message = {
-                    "head": "New Bid",
+                    "head": "Offer Accepted",
                     "body": f"{transporter.transporter_name} has accepted your offer!",
                     "icon": "/static/icons/icon-512x512.png",
                     "url": f"{settings.SITE_URL}/bid/{destination.id}"
@@ -818,4 +857,33 @@ def download_report(request):
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename=report_{start_month}_{start_year}_to_{end_month}_{end_year}.xlsx'
     wb.save(response)
+    return response
+
+
+def download_pdf(request, token):
+    transporter_token = get_object_or_404(TransporterToken, token=token)
+    transporter = transporter_token.transporter
+    destination = transporter_token.destination
+    proposed_offer = get_object_or_404(ProposedOffer, transporter=transporter, destination=destination)
+    vehicles = VehicleDetails.objects.filter(destination_id=destination)
+
+    # URL for the image to be included in the header
+    logo_url = 'https://www.supernovagenset.com/img/supernova_dg_manufacturers_in_india_logo.svg'  # Replace with your actual image URL
+
+    # Render the HTML template to a string
+    html_string = render_to_string('pdf_template.html', {
+        'transporter': transporter,
+        'destination': destination,
+        'proposed_offer': proposed_offer,
+        'vehicles': vehicles,
+        'logo_url': logo_url,
+    })
+
+    # Create a PDF from the HTML string
+    html = HTML(string=html_string)
+    pdf = html.write_pdf()
+
+    # Create an HTTP response with the PDF
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="Offer_{transporter.transporter_name}.pdf"'
     return response

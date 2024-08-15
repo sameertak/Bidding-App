@@ -43,6 +43,7 @@ class DestinationDetail(models.Model):
     number_of_vehicles = models.IntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
     time_limit = models.DateTimeField()
+    duration = models.DurationField(null=True, blank=True)
     reference = models.CharField(max_length=20, unique=True, blank=True, null=True)
     transporters = models.ManyToManyField(TransporterDetails)
 
