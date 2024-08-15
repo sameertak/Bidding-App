@@ -433,8 +433,7 @@ def save_contacts(request, destination_id):
             link = f"{settings.SITE_URL}{reverse('place_bid_with_token', args=[token])}"
             # Save the link or email it to the transporter
 
-            print(f"Link for {transporter.transporter_name}: {link}")
-            # client.messages.create(from_=config('from_number'),to=f'+91{transporter.transporter_contact}', body=f'Click on this url to place your bid: {link}.')
+            client.messages.create(from_=config('from_number'),to=f'+91{transporter.transporter_contact}', body=f'Click on this url to place your bid: {link}.')
 
         return redirect('user_bids')
     else:
