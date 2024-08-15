@@ -53,7 +53,6 @@ def send_push_notification(subscription_info, data):
             print(f"Remote service replied with a {extra['code']}:{extra['errno']}, {extra['message']}")
 
 
-
 def save_web_push_info(request):
     if request.method == 'POST':
         subscription_info = json.loads(request.body.decode('utf-8'))
@@ -98,20 +97,7 @@ def create_bid(request):
         )
         # Save the object to generate an ID
         new_bid.save()
-
-        # Generate the unique reference
-        time_limit_str = new_bid.time_limit
-        time_format = '%Y-%m-%dT%H:%M'
-
-        # Convert string to datetime
-        time_limit = datetime.strptime(time_limit_str, time_format)
-
-        # Get current time
-        current_time = datetime.now()
-
         # Calculate the duration
-        duration = time_limit - current_time
-        new_bid.duration = duration
         new_bid.reference = generate_unique_reference(new_bid.id)
         new_bid.save()
 
@@ -209,7 +195,7 @@ def submit_bid(request, destination_id, transporter_id):
             elif key.startswith('bid_amount_'):
                 vehicle_id = key.split('_')[2]  # Extract vehicle id from the key
                 bid_amounts[vehicle_id] = value
-
+        total_amount = 0
         for vehicle_id in vehicle_ids:
             if vehicle_id in bid_amounts and bid_amounts[vehicle_id]:  # Check if bid_amount is present
                 vehicle = get_object_or_404(VehicleDetails, id=vehicle_ids[vehicle_id])
@@ -220,27 +206,28 @@ def submit_bid(request, destination_id, transporter_id):
                     transporter=transporter,
                     defaults={'amount': bid_amounts[vehicle_id]}
                 )
+                total_amount += int(bid_amounts[vehicle_id])
                 
-                # Send web push notification
-                devices = WebPushSubscription.objects.filter(user=destination.user)
-                for device in devices:
-                    subscription = {
-                        "endpoint": device.endpoint,
-                        "keys": {
-                            "p256dh": device.p256dh,
-                            "auth": device.auth
-                        }
-                    }
-                    message = {
-                        "head": "New Bid",
-                        "body": f"{transporter.transporter_name} has posted a bid of ₹{bid_amounts[vehicle_id]} for {vehicle.material_description}",
-                        "icon": "/static/icons/icon-512x512.png",
-                        "url": f"{settings.SITE_URL}/user_bids/"
-                    }
-                    try:
-                        send_push_notification(subscription, json.dumps(message))
-                    except WebPushException as ex:
-                        print(f"Error sending push notification: {repr(ex)}")
+        # Send web push notification
+        devices = WebPushSubscription.objects.filter(user=destination.user)
+        for device in devices:
+            subscription = {
+                "endpoint": device.endpoint,
+                "keys": {
+                    "p256dh": device.p256dh,
+                    "auth": device.auth
+                }
+            }
+            message = {
+                "head": "New Bid",
+                "body": f"{transporter.transporter_name} has posted a bid of ₹{total_amount} for {destination.destination}",
+                "icon": "/static/icons/icon-512x512.png",
+                "url": f"{settings.SITE_URL}/user_bids/"
+            }
+            try:
+                send_push_notification(subscription, json.dumps(message))
+            except WebPushException as ex:
+                print(f"Error sending push notification: {repr(ex)}")
         return redirect('bid_success')  # redirect to a success page
 
     # Fetch all vehicles associated with the destination
@@ -441,9 +428,6 @@ def configure_contact(request, destination_id):
 def save_contacts(request, destination_id):
     if request.method == 'POST':
         destination = get_object_or_404(DestinationDetail, id=destination_id)
-        current_time = timezone.now()
-        destination.time_limit = destination.duration + current_time
-        destination.save()
         selected_users = destination.transporters.all()
         for transporter in selected_users:
             token = get_random_string(64)[:6]
@@ -693,7 +677,7 @@ def submit_new_offer(request):
     client.messages.create(
         from_=config('from_number'),
         to=f'+91{transporter.transporter_contact}',
-        body=f'Click on this url to accept or reject the offer: {link}.'
+        body=f'New offer is placed, Accept or Reject: {link}.'
     )
 
     return JsonResponse({'status': 'success'})
@@ -710,7 +694,7 @@ def revoke_offer(request):
     destination = get_object_or_404(DestinationDetail, id=destination_id)
 
     # Set all other offers for this destination to not accepted and not proposed
-    ProposedOffer.objects.filter(destination=destination, transporter=transporter).update(is_accepted=False, is_proposed=False)
+    ProposedOffer.objects.filter(destination=destination, transporter=transporter).update(is_accepted=False, is_proposed=False, is_offer_accepted=False)
     return JsonResponse({'status': 'success'})
 
 
@@ -734,7 +718,21 @@ def handle_offer_response(request, token):
 
             # Make sure all other offers are marked as not accepted
             ProposedOffer.objects.filter(destination=destination).exclude(id=offer.id).update(is_accepted=False)
-
+            token = get_random_string(64)[:6]
+            TransporterToken.objects.create(
+                transporter=transporter,
+                destination=destination,
+                token=token
+            )
+            link = f"{settings.SITE_URL}{reverse('download_pdf', args=[token])}"
+    
+            # print(f'Congratulations! Your offer was accepted. Download your PDF here: {link}.')
+            # Send SMS with the link
+            client.messages.create(
+                from_=config('from_number'),
+                to=f'+91{transporter.transporter_contact}',
+                body=f'Congratulations! Download offer copy: {link}.'
+            )
             devices = WebPushSubscription.objects.filter(user=destination.user)
             for device in devices:
                 subscription = {
@@ -867,6 +865,10 @@ def download_pdf(request, token):
     proposed_offer = get_object_or_404(ProposedOffer, transporter=transporter, destination=destination)
     vehicles = VehicleDetails.objects.filter(destination_id=destination)
 
+    for vehicle in vehicles:
+        days_to_add = vehicle.delivery_estimation
+        delta = timedelta(days=days_to_add)
+        vehicle.expected_delivery = vehicle.loading_date + delta
     # URL for the image to be included in the header
     logo_url = 'https://www.supernovagenset.com/img/supernova_dg_manufacturers_in_india_logo.svg'  # Replace with your actual image URL
 
